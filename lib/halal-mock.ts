@@ -17,5 +17,8 @@ export const halalMock: Record<string, HalalMockResult> = {
   "HIES.PA": { status: "compliant", reason: "ETF conçu pour suivre un indice filtré selon des principes islamiques." },
   "HIPS.PA": { status: "compliant", reason: "ETF conçu pour suivre un indice filtré selon des principes islamiques." },
   "HIWS.PA": { status: "compliant", reason: "ETF conçu pour suivre un indice filtré selon des principes islamiques." },
+  AAPL: { status: "compliant", reason: "Entreprise analysée comme conforme dans ce mock." },
+  TSLA: { status: "debated", reason: "Classification débattue selon certains critères de conformité." },
+  NVDA: { status: "non_compliant", reason: "Non conforme selon les critères du mock (activités ou ratios)." },
   "BTC-EUR": { status: "debated", reason: "Les avis des savants divergent concernant les crypto-actifs." },
 };

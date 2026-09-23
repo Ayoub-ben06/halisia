@@ -13,13 +13,15 @@ export type Database = {
           ticker: string | null;
           isin: string | null;
           name: string;
-          type: "stock" | "etf";
+          type: "stock" | "etf" | "crypto" | "gold" | "cash";
           quantity: number;
           average_buy_price: number;
           current_price: number | null;
           currency: string;
           broker: string;
-          account_type: "PEA" | "CTO" | null;
+          account_type: "PEA" | "CTO" | "Compte crypto" | "Autre" | null;
+          purchase_date: string | null;
+          halal_status: "compliant" | "non_compliant" | "debated" | "unknown";
           created_at: string;
         };
         Insert: {
@@ -28,13 +30,15 @@ export type Database = {
           ticker?: string | null;
           isin?: string | null;
           name: string;
-          type: "stock" | "etf";
+          type: "stock" | "etf" | "crypto" | "gold" | "cash";
           quantity: number;
           average_buy_price: number;
           current_price?: number | null;
           currency: string;
           broker: string;
-          account_type?: "PEA" | "CTO" | null;
+          account_type?: "PEA" | "CTO" | "Compte crypto" | "Autre" | null;
+          purchase_date?: string | null;
+          halal_status?: "compliant" | "non_compliant" | "debated" | "unknown";
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["assets"]["Insert"]>;
@@ -56,12 +60,17 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["crypto_assets"]["Row"], "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<
+          Database["public"]["Tables"]["crypto_assets"]["Row"],
+          "id" | "created_at" | "updated_at"
+        > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["crypto_assets"]["Insert"]>;
+        Update: Partial<
+          Database["public"]["Tables"]["crypto_assets"]["Insert"]
+        >;
         Relationships: [];
       };
       gold_assets: {
@@ -80,12 +89,153 @@ export type Database = {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["gold_assets"]["Row"], "id" | "created_at" | "updated_at"> & {
+        Insert: Omit<
+          Database["public"]["Tables"]["gold_assets"]["Row"],
+          "id" | "created_at" | "updated_at"
+        > & {
           id?: string;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["gold_assets"]["Insert"]>;
+        Relationships: [];
+      };
+      watchlist: {
+        Row: {
+          id: string;
+          user_id: string;
+          ticker: string;
+          isin: string | null;
+          name: string;
+          exchange: string | null;
+          type: string;
+          added_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          ticker: string;
+          isin?: string | null;
+          name: string;
+          exchange?: string | null;
+          type?: string;
+          added_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["watchlist"]["Insert"]>;
+        Relationships: [];
+      };
+      watchlist_alerts: {
+        Row: {
+          id: string;
+          user_id: string;
+          ticker: string;
+          name: string;
+          alert_type: "halal_change" | "price_target";
+          price_target: number | null;
+          is_active: boolean;
+          last_triggered_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          ticker: string;
+          name: string;
+          alert_type: "halal_change" | "price_target";
+          price_target?: number | null;
+          is_active?: boolean;
+          last_triggered_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["watchlist_alerts"]["Insert"]>;
+        Relationships: [];
+      };
+      user_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          daily_summary_enabled: boolean;
+          price_alerts_enabled: boolean;
+          annual_zakat_reminder_enabled: boolean;
+          zakat_payment_date: string | null;
+          zakat_reminder_last_sent_for: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          daily_summary_enabled?: boolean;
+          price_alerts_enabled?: boolean;
+          annual_zakat_reminder_enabled?: boolean;
+          zakat_payment_date?: string | null;
+          zakat_reminder_last_sent_for?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_preferences"]["Insert"]>;
+        Relationships: [];
+      };
+      screening_cache: {
+        Row: {
+          ticker: string;
+          status: string;
+          previous_status: string | null;
+          purification_ratio: number | null;
+          reason: string | null;
+          error: string | null;
+          screened_at: string;
+        };
+        Insert: {
+          ticker: string;
+          status: string;
+          previous_status?: string | null;
+          purification_ratio?: number | null;
+          reason?: string | null;
+          error?: string | null;
+          screened_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["screening_cache"]["Insert"]>;
+        Relationships: [];
+      };
+      compliance_changes: {
+        Row: {
+          id: string;
+          user_id: string;
+          ticker: string;
+          isin: string | null;
+          name: string | null;
+          previous_status: string | null;
+          new_status: string | null;
+          change_date: string;
+          day_30_deadline: string | null;
+          day_90_deadline: string | null;
+          resolved: boolean;
+          resolution: "sold" | "restored_compliant" | "purified" | null;
+          resolved_at: string | null;
+          notified_at: string | null;
+          reminder_30_sent_at: string | null;
+          reminder_85_sent_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          ticker: string;
+          isin?: string | null;
+          name?: string | null;
+          previous_status?: string | null;
+          new_status?: string | null;
+          change_date?: string;
+          day_30_deadline?: string | null;
+          day_90_deadline?: string | null;
+          resolved?: boolean;
+          resolution?: "sold" | "restored_compliant" | "purified" | null;
+          resolved_at?: string | null;
+          notified_at?: string | null;
+          reminder_30_sent_at?: string | null;
+          reminder_85_sent_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["compliance_changes"]["Insert"]>;
         Relationships: [];
       };
     };

@@ -10,38 +10,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0D1B2A",
+        background: "#111412",
         foreground: "#FFFFFF",
         primary: {
-          DEFAULT: "#C9A84C",
-          foreground: "#0D1B2A",
+          DEFAULT: "#c9a84c",
+          foreground: "#111412",
+          glow: "rgba(201, 168, 76, 0.1)",
         },
         secondary: {
-          DEFAULT: "#132236",
-          foreground: "#FFFFFF",
+          DEFAULT: "rgba(255, 255, 255, 0.03)",
+          foreground: "rgba(255, 255, 255, 0.6)",
         },
         muted: {
-          DEFAULT: "#132236",
-          foreground: "#8A9BB0",
+          DEFAULT: "#1a1c1a",
+          foreground: "rgba(255, 255, 255, 0.6)",
         },
         card: {
-          DEFAULT: "#132236",
+          DEFAULT: "#1a1c1a",
           foreground: "#FFFFFF",
         },
-        border: "#1E3248",
-        input: "#1E3248",
-        ring: "#C9A84C",
+        border: "rgba(255, 255, 255, 0.05)",
+        input: "rgba(255, 255, 255, 0.05)",
+        ring: "#c9a84c",
         destructive: {
-          DEFAULT: "#DC2626",
+          DEFAULT: "#ef4444",
           foreground: "#FFFFFF",
         },
         popover: {
-          DEFAULT: "#132236",
+          DEFAULT: "#1a1c1a",
           foreground: "#FFFFFF",
         },
         accent: {
-          DEFAULT: "#1E3248",
-          foreground: "#FFFFFF",
+          DEFAULT: "rgba(201, 168, 76, 0.1)",
+          foreground: "#c9a84c",
+        },
+        halal: {
+          compliant: "#10b981",
+          debated: "#f59e0b",
+          nonCompliant: "#ef4444",
         },
       },
       borderRadius: {

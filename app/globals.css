@@ -3,6 +3,29 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Halisia Private — fondations */
+    --halisia-surface: #111412;
+    --halisia-card: #1a1c1a;
+    --halisia-card-glass: rgba(255, 255, 255, 0.03);
+    --halisia-border: rgba(255, 255, 255, 0.05);
+    --halisia-border-subtle: rgba(255, 255, 255, 0.05);
+
+    /* Or standard */
+    --halisia-gold: #c9a84c;
+    --halisia-gold-glow: rgba(201, 168, 76, 0.1);
+
+    /* Conformité Shariah */
+    --halisia-compliant: #10b981;
+    --halisia-debated: #f59e0b;
+    --halisia-non-compliant: #ef4444;
+
+    /* Typographie */
+    --halisia-text-primary: #ffffff;
+    --halisia-text-secondary: rgba(255, 255, 255, 0.6);
+    --halisia-text-tertiary: rgba(255, 255, 255, 0.35);
+  }
+
   * {
     @apply border-border;
   }
@@ -11,5 +34,27 @@
     @apply bg-background text-foreground antialiased;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       "Segoe UI", sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-secondary {
+    color: var(--halisia-text-secondary);
+  }
+
+  .text-tertiary {
+    color: var(--halisia-text-tertiary);
+  }
+
+  .bg-surface-container {
+    background-color: var(--halisia-card);
+  }
+
+  .border-subtle {
+    border-color: var(--halisia-border-subtle);
+  }
+
+  .gold-glow {
+    background-color: var(--halisia-gold-glow);
   }
 }

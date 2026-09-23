@@ -1,474 +1,81 @@
 "use client";
 
-import {
-  ArrowRight,
-  Briefcase,
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
-  CircleCheck,
-  CloudUpload,
-  Search,
-  X,
-} from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { Briefcase, CheckCircle2, ChevronDown, CircleAlert, CloudUpload, Loader2, Search, X } from "lucide-react";
 import { halalMock } from "@/lib/halal-mock";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type SearchResult = {
-  ticker: string;
-  name: string;
-  exchange: string;
-  type: string;
-};
-
-type Tab = "manual" | "csv";
+type SearchResult = { ticker: string; name: string; exchange: string; type: string; isin?: string };
+type Account = "PEA" | "CTO" | "Compte crypto" | "Autre";
 type Broker = "Trade Republic" | "Degiro" | "Fortuneo" | "Bitpanda";
-type ImportedAsset = { name: string; quantity: number; averagePrice: number; compliant: boolean };
+type HalalStatus = "compliant" | "non_compliant" | "debated" | "unknown";
+type ImportAsset = { name: string; ticker: string | null; isin: string | null; type: "stock" | "etf" | "crypto" | "gold" | "cash"; quantity: number; averagePrice: number; currency: string; account: Account; purchaseDate: string; status: HalalStatus };
+type Errors = Partial<Record<"quantity" | "averagePrice" | "purchaseDate" | "account" | "submit", string>>;
+const brokers: Broker[] = ["Trade Republic", "Degiro", "Fortuneo", "Bitpanda"];
+const help: Record<Broker, string> = { Fortuneo: "Bourse → Mon portefeuille → Exporter → XLS", Bitpanda: "Paramètres → Historique → Exporter CSV", "Trade Republic": "Profil → Documents → Exporter", Degiro: "Activité → Exporter" };
+const euro = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
 
-const eur = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const pct = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+function assetType(value: string): ImportAsset["type"] { const type = value.toUpperCase(); if (type.includes("ETF")) return "etf"; if (type.includes("CRYPTO")) return "crypto"; if (type.includes("GOLD") || type.includes("METAL") || type === "XAU") return "gold"; if (type.includes("CASH")) return "cash"; return "stock"; }
+function statusFor(ticker?: string | null, name?: string): HalalStatus { const result = (ticker && (halalMock[ticker] ?? halalMock[ticker.split(".")[0]])) || undefined; if (result) return result.status; if (/ISLAMIC/i.test(name ?? "")) return "compliant"; return "unknown"; }
+function statusLabel(status: HalalStatus) { return status === "compliant" ? "Conforme" : status === "non_compliant" ? "Non conforme" : status === "debated" ? "Douteux" : "Non analysé"; }
+function numeric(value: unknown) { return Number(String(value ?? "").replace(/\s/g, "").replace(/€/g, "").replace(",", ".")); }
+function isoDate(value: unknown) { const raw = String(value ?? "").trim(); if (!raw) return new Date().toISOString().slice(0, 10); const match = raw.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})/); if (match) return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`; const parsed = new Date(raw); return Number.isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10); }
+function get(row: Record<string, unknown>, ...keys: string[]) { const actual = Object.keys(row).find((key) => keys.some((wanted) => key.trim().toLowerCase() === wanted.toLowerCase())); return actual ? row[actual] : ""; }
 
-function typeLabel(type: string): string {
-  switch (type.toUpperCase()) {
-    case "EQUITY":
-      return "Action";
-    case "ETF":
-      return "ETF";
-    case "CRYPTOCURRENCY":
-      return "Crypto";
-    default:
-      return type || "Actif";
-  }
+export function AddAssetModal({ open, onClose, initialAsset = null }: { open: boolean; onClose: () => void; initialAsset?: SearchResult | null }) {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [tab, setTab] = useState("manual");
+  const [query, setQuery] = useState(""); const [results, setResults] = useState<SearchResult[]>([]); const [searching, setSearching] = useState(false); const [searchOpen, setSearchOpen] = useState(false);
+  const [selected, setSelected] = useState<SearchResult | null>(null); const [currentPrice, setCurrentPrice] = useState<number | null>(null); const [priceLoading, setPriceLoading] = useState(false);
+  const [quantity, setQuantity] = useState(""); const [averagePrice, setAveragePrice] = useState(""); const [purchaseDate, setPurchaseDate] = useState(""); const [account, setAccount] = useState<Account | "">(""); const [errors, setErrors] = useState<Errors>({}); const [submitting, setSubmitting] = useState(false);
+  const [broker, setBroker] = useState<Broker>("Fortuneo"); const [file, setFile] = useState<File | null>(null); const [importRows, setImportRows] = useState<ImportAsset[]>([]); const [importError, setImportError] = useState(""); const [dragging, setDragging] = useState(false); const [helpOpen, setHelpOpen] = useState(false); const [progress, setProgress] = useState(0);
+  const [toast, setToast] = useState("");
+
+  useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 4000); return () => window.clearTimeout(timer); }, [toast]);
+  useEffect(() => { if (open && initialAsset) { void chooseAsset(initialAsset); setTab("manual"); } if (!open) { clearAsset(); setQuantity(""); setAveragePrice(""); setPurchaseDate(""); setAccount(""); setErrors({}); } }, [open, initialAsset?.ticker]);
+  useEffect(() => { const value = query.trim(); if (!value || selected) { setResults([]); setSearchOpen(false); return; } const controller = new AbortController(); const timer = window.setTimeout(async () => { setSearching(true); try { const response = await fetch(`/api/search-assets?q=${encodeURIComponent(value)}`, { signal: controller.signal }); if (!response.ok) throw new Error("Recherche indisponible"); setResults(await response.json()); setSearchOpen(true); } catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) { setResults([]); setSearchOpen(true); } } finally { if (!controller.signal.aborted) setSearching(false); } }, 300); return () => { clearTimeout(timer); controller.abort(); }; }, [query, selected]);
+
+  async function chooseAsset(asset: SearchResult) { setSelected(asset); setQuery(""); setSearchOpen(false); setCurrentPrice(null); setPriceLoading(true); try { const response = await fetch("/api/prices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assets: [{ isin: asset.ticker, ticker: asset.ticker, name: asset.name, currency: "EUR" }] }) }); if (!response.ok) throw new Error("Prix Yahoo Finance indisponible"); const prices = await response.json() as Record<string, number | null>; setCurrentPrice(prices[asset.ticker] ?? null); } catch { setCurrentPrice(null); } finally { setPriceLoading(false); } }
+  function clearAsset() { setSelected(null); setQuery(""); setCurrentPrice(null); setErrors({}); }
+  function validate() { const next: Errors = {}; const qty = numeric(quantity); const price = numeric(averagePrice); if (!quantity || !Number.isFinite(qty) || qty <= 0) next.quantity = "La quantité doit être supérieure à 0."; if (!averagePrice || !Number.isFinite(price) || price <= 0) next.averagePrice = "Le prix d’achat doit être supérieur à 0."; if (!purchaseDate) next.purchaseDate = "La date d’achat est requise."; else if (purchaseDate > new Date().toISOString().slice(0, 10)) next.purchaseDate = "La date ne peut pas être dans le futur."; if (!account) next.account = "Sélectionnez un compte."; setErrors(next); return Object.keys(next).length === 0; }
+  async function submitManual() { if (!selected || !validate()) return; setSubmitting(true); setErrors({}); try { const supabase = createClient(); const { data: { user }, error: authError } = await supabase.auth.getUser(); if (authError || !user) throw new Error("Session expirée. Veuillez vous reconnecter."); const status = statusFor(selected.ticker, selected.name); const { error } = await supabase.from("assets").insert({ user_id: user.id, name: selected.name, ticker: selected.ticker, isin: selected.isin ?? null, type: assetType(selected.type), quantity: numeric(quantity), average_buy_price: numeric(averagePrice), current_price: currentPrice, currency: "EUR", broker: "manuel", account_type: account || null, purchase_date: purchaseDate, halal_status: status }); if (error) throw error; onClose(); setToast("Actif ajouté avec succès"); router.refresh(); clearAsset(); setQuantity(""); setAveragePrice(""); setPurchaseDate(""); setAccount(""); } catch (error) { setErrors({ submit: error instanceof Error ? error.message : "Impossible d’ajouter l’actif." }); } finally { setSubmitting(false); } }
+
+  async function parseFile(nextFile: File) { setFile(nextFile); setImportRows([]); setImportError(""); try { let source: Record<string, unknown>[]; if (/\.csv$/i.test(nextFile.name)) { const text = (await nextFile.text()).replace(/^\uFEFF/, ""); const lines = text.split(/\r?\n/); const skip = broker === "Bitpanda" ? 5 : broker === "Fortuneo" ? 3 : 0; const parsed = Papa.parse<Record<string, unknown>>(lines.slice(skip).join("\n"), { header: true, skipEmptyLines: true, transformHeader: (header) => header.trim() }); if (parsed.errors.length && !parsed.data.length) throw new Error(parsed.errors[0].message); source = parsed.data; } else { const workbook = XLSX.read(await nextFile.arrayBuffer(), { cellDates: true }); const sheet = workbook.Sheets[workbook.SheetNames[0]]; if (!sheet) throw new Error("Le fichier ne contient aucune feuille."); const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }); const expected = broker === "Fortuneo" ? ["Libellé", "ISIN"] : broker === "Degiro" ? ["Produit", "ISIN"] : ["Asset"]; const headerIndex = matrix.findIndex((row) => expected.every((header) => row.some((cell) => String(cell).trim() === header))); if (headerIndex < 0) throw new Error(`Format ${broker} non reconnu.`); const headers = matrix[headerIndex].map(String); source = matrix.slice(headerIndex + 1).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index]]))); }
+      const mapped = source.flatMap((row): ImportAsset[] => { if (broker === "Bitpanda" && String(get(row, "Transaction Type", "Type")).toLowerCase() !== "buy") return []; const name = String(get(row, "Libellé", "Produit", "Asset", "Nom")).trim(); const isin = String(get(row, "ISIN")).trim() || null; const qty = numeric(get(row, "Qté", "Quantité", "Shares", "Amount Asset")); const price = numeric(get(row, "PRU", "Cours", "Price", "Asset market price")); if (!name || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(price) || price <= 0) return []; const rawType = String(get(row, "Asset class", "Type")); const ticker = String(get(row, "Ticker", "Asset")).trim() || isin; const type = broker === "Bitpanda" ? assetType(rawType || ticker || "crypto") : assetType(rawType || name); const purchase = isoDate(get(row, "Date", "Timestamp")); const exportedAccount = String(get(row, "account_type", "Compte")).trim(); const acct: Account = broker === "Bitpanda" ? "Compte crypto" : exportedAccount === "PEA" ? "PEA" : exportedAccount === "Autre" ? "Autre" : "CTO"; return [{ name, ticker, isin, type, quantity: qty, averagePrice: price, currency: String(get(row, "Dev", "Currency", "Fiat")).trim() || "EUR", account: acct, purchaseDate: purchase, status: statusFor(ticker, name) }]; }); if (!mapped.length) throw new Error(`Aucun actif valide détecté dans cet export ${broker}.`); setImportRows(mapped); } catch (error) { setFile(null); setImportError(error instanceof Error ? error.message : "Impossible de lire le fichier."); } }
+  function clearFile() { setFile(null); setImportRows([]); setImportError(""); setProgress(0); if (fileRef.current) fileRef.current.value = ""; }
+  async function confirmImport() { if (!importRows.length) return; setSubmitting(true); setImportError(""); setProgress(0); try { const supabase = createClient(); const { data: { user }, error: authError } = await supabase.auth.getUser(); if (authError || !user) throw new Error("Session expirée. Veuillez vous reconnecter."); let imported = 0; for (let index = 0; index < importRows.length; index++) { const row = importRows[index]; const { error } = await supabase.from("assets").upsert({ user_id: user.id, name: row.name, ticker: row.ticker, isin: row.isin, type: row.type, quantity: row.quantity, average_buy_price: row.averagePrice, current_price: row.averagePrice, currency: row.currency, broker: broker.toLowerCase().replace(" ", "_"), account_type: row.account, purchase_date: row.purchaseDate, halal_status: row.status }, { onConflict: "user_id,ticker,purchase_date", ignoreDuplicates: true }); if (error) throw error; imported++; setProgress(index + 1); } onClose(); setToast(`${imported} actifs importés avec succès`); clearFile(); router.refresh(); } catch (error) { setImportError(error instanceof Error ? error.message : "L’import a échoué."); } finally { setSubmitting(false); } }
+
+  const qty = numeric(quantity) || 0; const avg = numeric(averagePrice) || 0; const value = currentPrice === null ? null : qty * currentPrice; const gain = currentPrice === null ? null : (currentPrice - avg) * qty; const manualStatus = selected ? statusFor(selected.ticker, selected.name) : "unknown";
+  return <>
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !submitting) onClose(); }}><DialogContent className="border-white/[0.05] bg-[#111412] p-0 text-[#ffffff] sm:max-w-[650px]"><DialogHeader className="px-5 pt-5 sm:px-8 sm:pt-7"><DialogTitle>Ajouter un actif</DialogTitle></DialogHeader>
+      <Tabs value={tab} onValueChange={setTab} className="px-5 pb-5 sm:px-8 sm:pb-8"><TabsList className="mt-4 grid w-full grid-cols-2 border-b border-white/[0.05]"><TabsTrigger value="manual" className="border-b-2 border-transparent py-4 font-semibold text-[rgba(255,255,255,0.6)] data-[state=active]:border-[#c9a84c] data-[state=active]:text-[#e6c364]">Saisie manuelle</TabsTrigger><TabsTrigger value="csv" className="border-b-2 border-transparent py-4 font-semibold text-[rgba(255,255,255,0.6)] data-[state=active]:border-[#c9a84c] data-[state=active]:text-[#e6c364]">Import CSV</TabsTrigger></TabsList>
+        <TabsContent value="manual" className="mt-5 space-y-5"><div className="relative"><Search className="absolute left-3 top-3.5 h-4 w-4 text-[#8f8878]" /><Input value={query} onChange={(event) => { if (selected) clearAsset(); setQuery(event.target.value); }} onFocus={() => query.trim() && setSearchOpen(true)} placeholder="Rechercher un actif (nom, ticker, ISIN...)" className="h-11 border-[#4d4637] bg-[#1a1c1a] pl-10" />{searchOpen && !selected && <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-md border border-[#4d4637] bg-[#1b201c] shadow-xl">{searching ? <p className="p-4 text-sm"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Recherche...</p> : results.length ? results.map((result) => <button key={`${result.ticker}-${result.exchange}`} type="button" onClick={() => void chooseAsset(result)} className="flex w-full items-center gap-3 border-b border-white/[0.05] px-4 py-3 text-left last:border-0 hover:bg-[#282d29]"><span className="flex-1"><strong>{result.ticker}</strong> <span className="text-[rgba(255,255,255,0.6)]">{result.name}</span></span><span className="text-xs text-[#8f8878]">{result.exchange}</span><span className="rounded border border-[#4d4637] px-2 py-0.5 text-xs">{result.type}</span></button>) : <p className="p-4 text-sm text-[#8f8878]">Aucun actif trouvé.</p>}</div>}</div>
+          {selected && <><div className="flex items-center gap-3 rounded-md border border-[#c9a84c] bg-[#1a1c1a] p-3"><Briefcase className="h-5 w-5 text-[#c9a84c]" /><div className="min-w-0 flex-1"><p className="truncate font-semibold">{selected.ticker} — {selected.name}</p><p className="text-xs text-[#8f8878]">{selected.exchange} • {selected.type}</p></div><button type="button" onClick={clearAsset} aria-label="Désélectionner"><X className="h-5 w-5" /></button></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Quantité" error={errors.quantity}><Input type="number" min="0.00000001" step="any" value={quantity} onChange={(event) => setQuantity(event.target.value)} className={fieldClass(errors.quantity)} /></Field><Field label="Prix d'achat moyen (€)" error={errors.averagePrice}><Input type="number" min="0.01" step="any" value={averagePrice} onChange={(event) => setAveragePrice(event.target.value)} className={fieldClass(errors.averagePrice)} /></Field><Field label="Date d'achat" error={errors.purchaseDate}><Input type="date" max={new Date().toISOString().slice(0, 10)} value={purchaseDate} onChange={(event) => setPurchaseDate(event.target.value)} className={`${fieldClass(errors.purchaseDate)} [color-scheme:dark]`} /></Field><Field label="Compte" error={errors.account}><Select value={account} onValueChange={(value) => setAccount(value as Account)}><SelectTrigger className={fieldClass(errors.account)}><SelectValue placeholder="Choisir un compte" /></SelectTrigger><SelectContent>{(["PEA", "CTO", "Compte crypto", "Autre"] as Account[]).map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></Field></div>
+            <div className="rounded-lg border border-white/[0.05] border-l-4 border-l-[#c9a84c] bg-[#1a1c1a] p-4 text-sm"><Preview label="Valeur estimée" value={priceLoading ? "Chargement..." : value === null ? "Prix indisponible" : euro.format(value)} /><Preview label="Statut halal" value={statusLabel(manualStatus)} status={manualStatus} /><Preview label="+/- depuis achat" value={gain === null || !avg ? "—" : `${gain >= 0 ? "+" : ""}${euro.format(gain)}`} positive={gain !== null ? gain >= 0 : undefined} /></div></>}
+          {errors.submit && <ErrorMessage>{errors.submit}</ErrorMessage>}<DialogFooter className="border-t border-white/[0.05] pt-4"><Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</Button><Button onClick={() => void submitManual()} disabled={!selected || submitting}>{submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Ajouter à mon portefeuille</Button></DialogFooter>
+        </TabsContent>
+        <TabsContent value="csv" className="mt-5 space-y-5"><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{brokers.map((item) => <button key={item} type="button" onClick={() => { setBroker(item); clearFile(); }} className={`border-b-2 px-2 py-3 text-xs font-semibold ${broker === item ? "border-[#c9a84c] text-[#e6c364]" : "border-transparent text-[rgba(255,255,255,0.6)]"}`}>{item}</button>)}</div>
+          <button type="button" onClick={() => fileRef.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); const next = event.dataTransfer.files[0]; if (next) void parseFile(next); }} className={`flex min-h-48 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 ${dragging ? "border-[#e6c364] bg-[#c9a84c]/10" : "border-[#8c762e] bg-[#111412]"}`}><CloudUpload className="mb-4 h-8 w-8 text-[#e6c364]" /><strong>Glissez votre fichier ici</strong><span className="text-sm text-[rgba(255,255,255,0.6)]">ou cliquez pour parcourir</span><span className="mt-3 text-xs text-[#8f8878]">.csv • .xls • .xlsx</span></button><input ref={fileRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={(event) => { const next = event.target.files?.[0]; if (next) void parseFile(next); }} />
+          {file && <div className="flex items-center gap-3 rounded-md border border-white/[0.05] bg-[#1a1c1a] p-3"><CheckCircle2 className="h-5 w-5 text-halal-compliant" /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{file.name}</span><button type="button" onClick={clearFile}><X className="h-5 w-5" /></button></div>}{importError && <ErrorMessage>{importError}</ErrorMessage>}
+          {!!importRows.length && <div className="overflow-x-auto rounded-lg border border-white/[0.05]"><table className="w-full min-w-[560px] text-xs"><thead className="bg-[#282d29] text-left"><tr>{["Actif", "ISIN", "Quantité", "PRU", "Statut halal"].map((title) => <th key={title} className="p-3">{title}</th>)}</tr></thead><tbody>{importRows.slice(0, 5).map((row, index) => <tr key={`${row.ticker}-${index}`} className="border-t border-white/[0.05]"><td className="p-3">{row.name}</td><td className="p-3">{row.isin ?? "—"}</td><td className="p-3">{row.quantity}</td><td className="p-3">{euro.format(row.averagePrice)}</td><td className="p-3">{statusLabel(row.status)}</td></tr>)}</tbody></table><p className="bg-[#282d29] p-3 text-xs">{importRows.length} actifs détectés • {importRows.filter((row) => row.status === "compliant").length} conformes • {importRows.filter((row) => row.status === "unknown").length} non analysés</p></div>}
+          <div className="border-y border-white/[0.05]"><button type="button" onClick={() => setHelpOpen(!helpOpen)} className="flex w-full items-center justify-between py-4 text-left text-sm font-semibold">Comment exporter depuis {broker} ? <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} /></button>{helpOpen && <p className="pb-4 text-sm text-[rgba(255,255,255,0.6)]">{help[broker]}</p>}</div>{submitting && <p className="text-center text-sm text-[#e6c364]"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Import en cours... {progress}/{importRows.length} actifs</p>}
+          <DialogFooter><Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</Button><Button onClick={() => void confirmImport()} disabled={!importRows.length || submitting}>{submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Importer {importRows.length || ""} actif{importRows.length > 1 ? "s" : ""}</Button></DialogFooter>
+        </TabsContent>
+      </Tabs></DialogContent></Dialog>
+    {toast && <div role="status" className="fixed bottom-5 right-5 z-[200] flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-[#111412] px-4 py-3 text-sm text-white shadow-xl"><CheckCircle2 className="h-5 w-5 text-halal-compliant" />{toast}</div>}
+  </>;
 }
 
-function halalStatus(ticker: string, name: string): { label: string; compliant: boolean } {
-  const mock = halalMock[ticker] ?? halalMock[ticker.split(".")[0]];
-  if (mock?.status === "compliant") return { label: "Conforme", compliant: true };
-  if (mock?.status === "debated") return { label: "Débat", compliant: false };
-  if (/ISLAMIC/i.test(name)) return { label: "Conforme", compliant: true };
-  return { label: "Analyse", compliant: false };
-}
-
-export function AddAssetModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const [tab, setTab] = useState<Tab>("manual");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<SearchResult | null>(null);
-  const [quantity, setQuantity] = useState("");
-  const [averagePrice, setAveragePrice] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState("");
-  const [account, setAccount] = useState<"PEA" | "CTO">("PEA");
-  const [broker, setBroker] = useState<Broker>("Fortuneo");
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importedAssets, setImportedAssets] = useState<ImportedAsset[]>([]);
-  const [importError, setImportError] = useState("");
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [open, onClose]);
-
-  useEffect(() => {
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery || selected) {
-      setResults([]);
-      setSearchOpen(false);
-      setLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeout = window.setTimeout(async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/search-assets?q=${encodeURIComponent(trimmedQuery)}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error("Recherche indisponible");
-        const data = (await response.json()) as SearchResult[];
-        setResults(data);
-        setSearchOpen(true);
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setResults([]);
-          setSearchOpen(true);
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [query, selected]);
-
-  if (!open) return null;
-
-  const qty = Number(quantity.replace(",", ".")) || 0;
-  const avg = Number(averagePrice.replace(",", ".")) || 0;
-  const invested = qty * avg;
-  const estimatedValue = invested;
-  const gain = 0;
-  const gainPercent = invested ? 0 : 0;
-  const status = selected ? halalStatus(selected.ticker, selected.name) : null;
-
-  const selectAsset = (asset: SearchResult) => {
-    setSelected(asset);
-    setQuery("");
-    setSearchOpen(false);
-  };
-
-  const clearSelection = () => {
-    setSelected(null);
-    setQuery("");
-  };
-
-  const readImportFile = async (file: File) => {
-    setImportError("");
-    try {
-      const workbook = XLSX.read(await file.arrayBuffer());
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      if (!sheet) throw new Error("Ce fichier ne contient aucune feuille.");
-      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
-      const headerIndex = rows.findIndex((row) =>
-        row.some((cell) => ["Libellé", "Asset", "Nom"].includes(String(cell).trim())),
-      );
-      if (headerIndex < 0) throw new Error("Le format du fichier n’est pas reconnu.");
-      const headers = rows[headerIndex].map((cell) => String(cell).trim());
-      const indexOf = (...names: string[]) => names.map((name) => headers.indexOf(name)).find((i) => i >= 0) ?? -1;
-      const nameIndex = indexOf("Libellé", "Asset", "Nom");
-      const quantityIndex = indexOf("Qté", "Quantité", "Amount Asset");
-      const priceIndex = indexOf("PRU", "Prix", "Asset market price");
-      const parsed = rows.slice(headerIndex + 1).flatMap((row) => {
-        const name = String(row[nameIndex] ?? "").trim();
-        const quantity = Number(String(row[quantityIndex] ?? "").replace(/\s/g, "").replace(",", "."));
-        const averagePrice = Number(String(row[priceIndex] ?? "").replace(/\s/g, "").replace(",", "."));
-        if (!name || !Number.isFinite(quantity) || !Number.isFinite(averagePrice)) return [];
-        return [{ name, quantity, averagePrice, compliant: halalStatus("", name).compliant }];
-      });
-      if (!parsed.length) throw new Error("Aucun actif exploitable n’a été trouvé.");
-      setImportFile(file);
-      setImportedAssets(parsed);
-    } catch (error) {
-      setImportFile(null);
-      setImportedAssets([]);
-      setImportError(error instanceof Error ? error.message : "Impossible de lire ce fichier.");
-    }
-  };
-
-  const clearImport = () => {
-    setImportFile(null);
-    setImportedAssets([]);
-    setImportError("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Fermer la modale"
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-asset-title"
-        className="relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-[616px] overflow-y-auto rounded-2xl border border-[#4d4637]/30 bg-[#111512] p-6 shadow-2xl sm:p-9"
-      >
-        <h2 id="add-asset-title" className="text-xl font-bold text-[#e2e3df]">
-          Ajouter un actif
-        </h2>
-
-        <div className="mt-5 grid grid-cols-2 border-b border-[#4d4637]/20">
-          <button
-            type="button"
-            onClick={() => setTab("manual")}
-            className={`pb-4 text-sm font-semibold transition-colors ${
-              tab === "manual"
-                ? "border-b-2 border-[#c9a84c] text-[#e6c364]"
-                : "text-[#d0c5b2] hover:text-[#e2e3df]"
-            }`}
-          >
-            Saisie manuelle
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("csv")}
-            className={`pb-4 text-sm font-semibold transition-colors ${
-              tab === "csv"
-                ? "border-b-2 border-[#c9a84c] text-[#e6c364]"
-                : "text-[#d0c5b2] hover:text-[#e2e3df]"
-            }`}
-          >
-            Import CSV
-          </button>
-        </div>
-
-        {tab === "manual" ? (
-          <div className="mt-6 space-y-5">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#706957]" />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => {
-                  if (selected) clearSelection();
-                  setQuery(event.target.value);
-                }}
-                onFocus={() => query.trim() && setSearchOpen(true)}
-                placeholder="Rechercher un actif (nom, ticker, ISIN...)"
-                className="h-[53px] w-full rounded-md border border-[#665936]/60 bg-[#1a1d1a] pl-11 pr-4 text-sm text-[#e2e3df] outline-none placeholder:font-semibold placeholder:text-[#948b79] focus:border-[#c9a84c]"
-              />
-              {searchOpen && !selected && (
-                <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-[#4d4637]/30 bg-[#1e201e] shadow-lg">
-                  {loading ? (
-                    <p className="px-4 py-3 text-sm text-[#d0c5b2]">Recherche...</p>
-                  ) : results.length > 0 ? (
-                    <ul className="max-h-56 overflow-y-auto py-1">
-                      {results.map((result) => (
-                        <li key={`${result.ticker}-${result.exchange}`}>
-                          <button
-                            type="button"
-                            onClick={() => selectAsset(result)}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#282b28]"
-                          >
-                            <span className="min-w-0 flex-1 truncate text-sm">
-                              <strong className="text-[#e2e3df]">{result.ticker}</strong>{" "}
-                              <span className="text-[#d0c5b2]">{result.name}</span>
-                            </span>
-                            <span className="rounded bg-[#282b28] px-2 py-0.5 text-xs text-[#d0c5b2]">
-                              {typeLabel(result.type)}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="px-4 py-3 text-sm text-[#d0c5b2]">Aucun actif trouvé.</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {selected && (
-              <div className="flex items-center gap-3 rounded-md border border-[#c9a84c]/70 bg-[#1a1d1a] px-3 py-3.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#4d4637]/40 bg-[#1e211e] text-[#d0c5b2]">
-                  <Briefcase className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-[#e2e3df]">
-                    {selected.ticker} — {selected.name}
-                  </p>
-                  {status && (
-                    <span className={`mt-1 flex items-center gap-1 text-xs font-semibold ${status.compliant ? "text-emerald-400" : "text-[#d0c5b2]"}`}>
-                      {status.compliant && <CircleCheck className="h-3 w-3" />}{status.label}
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  aria-label="Retirer la sélection"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#d0c5b2] hover:bg-[#282b28] hover:text-[#e2e3df]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-
-            <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
-              <Field label="Quantité">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={quantity}
-                  onChange={(event) => setQuantity(event.target.value)}
-                  placeholder="10"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Prix d'achat moyen (€)">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={averagePrice}
-                  onChange={(event) => setAveragePrice(event.target.value)}
-                  placeholder="112,50"
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="Date d'achat">
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(event) => setPurchaseDate(event.target.value)}
-                    className={`${inputClass} pr-10 [color-scheme:dark]`}
-                  />
-                  <Calendar className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#706957]" />
-                </div>
-              </Field>
-              <Field label="Compte">
-                <div className="relative">
-                  <select
-                    value={account}
-                    onChange={(event) => setAccount(event.target.value as "PEA" | "CTO")}
-                    className={`${inputClass} appearance-none pr-10`}
-                  >
-                    <option value="PEA">PEA</option>
-                    <option value="CTO">CTO</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#706957]" />
-                </div>
-              </Field>
-            </div>
-
-            {selected && (
-              <p className="text-xs font-semibold text-[#d0c5b2]">
-                Type d&apos;actif :{" "}
-                <span className="ml-1 rounded-sm border border-[#4d4637]/50 bg-[#282b28] px-2 py-0.5 font-semibold text-[#e2e3df]">
-                  {typeLabel(selected.type)}
-                </span>
-              </p>
-            )}
-
-            <div className="rounded-lg border border-[#282c28] border-l-4 border-l-[#e7c55f] bg-[#1a1d1a] px-4 py-2.5">
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-sm font-semibold text-[#d0c5b2]">Valeur estimée</span>
-                <span className="text-lg font-bold text-[#e2e3df]">
-                  {invested ? eur.format(estimatedValue) : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-sm font-semibold text-[#d0c5b2]">Statut halal</span>
-                {status ? (
-                  <span
-                    className={`flex items-center gap-1 text-sm font-semibold ${
-                      status.compliant ? "text-emerald-400" : "text-[#d0c5b2]"
-                    }`}
-                  >
-                    {status.compliant && <CheckCircle2 className="h-4 w-4" />}
-                    {status.label}
-                  </span>
-                ) : (
-                  <span className="text-sm text-[#706957]">—</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between py-2.5">
-                <span className="text-sm font-semibold text-[#d0c5b2]">+/- depuis achat</span>
-                <span className="text-sm font-semibold text-emerald-400">
-                  {invested
-                    ? `${gain >= 0 ? "+" : ""}${eur.format(gain).replace(/\s/g, " ")} (${gain >= 0 ? "+" : ""}${pct.format(gainPercent)} %)`
-                    : "—"}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-6 space-y-5">
-            <div>
-              <p className="mb-3 text-xs font-semibold text-[#d0c5b2]">Choisir votre courtier</p>
-              <div className="flex flex-wrap gap-2">
-                {(["Trade Republic", "Degiro", "Fortuneo", "Bitpanda"] as Broker[]).map((item) => (
-                  <button key={item} type="button" onClick={() => { setBroker(item); clearImport(); }}
-                    className={`rounded-md border px-3.5 py-2 text-xs font-semibold transition-colors ${broker === item ? "border-[#e7c55f] bg-[#e7c55f] text-[#171811]" : "border-[#4d4637]/40 text-[#d0c5b2] hover:border-[#c9a84c]/60"}`}>
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) void readImportFile(file); }}
-              className={`flex min-h-[205px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition-colors ${dragging ? "border-[#e7c55f] bg-[#e7c55f]/5" : "border-[#876f2f] bg-[#151916] hover:border-[#e7c55f]"}`}>
-              <CloudUpload className="mb-5 h-8 w-8 text-[#e7c55f]" />
-              <span className="text-base font-bold text-[#e2e3df]">Glissez votre fichier ici</span>
-              <span className="text-xs text-[#d0c5b2]">ou cliquez pour parcourir</span>
-              <span className="mt-4 text-[11px] text-[#8f8878]">Formats acceptés : .csv • .xls • .xlsx</span>
-            </button>
-            <input ref={fileInputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden"
-              onChange={(event) => { const file = event.target.files?.[0]; if (file) void readImportFile(file); }} />
-
-            {importError && <p className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-xs text-red-300">{importError}</p>}
-
-            {importFile && (
-              <>
-                <div className="flex items-center gap-3 rounded-md border border-[#4d4637]/30 bg-[#1b1e1b] px-4 py-3.5">
-                  <CircleCheck className="h-5 w-5 shrink-0 text-emerald-400" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-[#e2e3df]">{importFile.name}</p><p className="text-xs text-[#d0c5b2]">{Math.max(1, Math.round(importFile.size / 1024))} KB</p></div>
-                  <button type="button" onClick={clearImport} aria-label="Retirer le fichier" className="p-1 text-[#d0c5b2] hover:text-white"><X className="h-5 w-5" /></button>
-                </div>
-
-                <div className="overflow-hidden rounded-lg border border-[#282c28]">
-                  <div className="grid grid-cols-[1.55fr_.8fr_.85fr_1fr] bg-[#292d29] px-3 py-2 text-[11px] font-bold text-[#d9d0bd]"><span>Actif</span><span>Quantité</span><span>PRU</span><span>Statut</span></div>
-                  {importedAssets.slice(0, 4).map((asset, index) => (
-                    <div key={`${asset.name}-${index}`} className="grid grid-cols-[1.55fr_.8fr_.85fr_1fr] items-center border-t border-[#292d29] bg-[#1b1e1b] px-3 py-2 text-xs text-[#e2e3df]">
-                      <span className="truncate pr-2">{asset.name}</span><span>{asset.quantity}</span><span>{asset.averagePrice.toFixed(2)}€</span>
-                      <span className={asset.compliant ? "flex items-center gap-1 text-emerald-400" : "text-amber-300"}>{asset.compliant && <CircleCheck className="h-3 w-3" />}{asset.compliant ? "Conforme" : "À vérifier"}</span>
-                    </div>
-                  ))}
-                  <div className="bg-[#292d29] px-3 py-2 text-[11px] font-semibold text-[#d9d0bd]">{importedAssets.length} actifs détectés • {importedAssets.filter((asset) => asset.compliant).length} conformes • {importedAssets.filter((asset) => !asset.compliant).length} non conformes</div>
-                </div>
-              </>
-            )}
-
-            <button type="button" className="flex w-full items-center justify-between border-y border-[#4d4637]/20 py-4 text-left text-xs font-semibold text-[#d0c5b2]">
-              Comment exporter depuis {broker} ? <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        <div className="mt-8 flex justify-end gap-3 border-t border-[#4d4637]/25 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-6 py-3 text-sm font-medium text-[#e2e3df] hover:bg-[#282b28]"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={tab === "manual" ? !selected : !importFile}
-            className="rounded-xl bg-[#d5b34f] px-6 py-3 text-sm font-bold text-[#111412] transition-opacity hover:bg-[#e6c364] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {tab === "manual" ? "Ajouter à mon portefeuille" : <>Importer {importedAssets.length} actifs <ArrowRight className="ml-2 inline h-4 w-4" /></>}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const inputClass =
-  "h-11 w-full rounded-md border border-[#665936]/60 bg-[#1a1d1a] px-3 text-sm text-[#e2e3df] outline-none focus:border-[#c9a84c]";
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block space-y-2">
-      <span className="text-xs font-medium text-[#d0c5b2]">{label}</span>
-      {children}
-    </label>
-  );
-}
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) { return <label className="space-y-2"><span className="text-xs font-medium text-[rgba(255,255,255,0.6)]">{label}</span>{children}{error && <span className="flex items-center gap-1 text-xs text-halal-nonCompliant"><CircleAlert className="h-3 w-3" />{error}</span>}</label>; }
+function fieldClass(error?: string) { return `h-11 bg-[#1a1c1a] ${error ? "border-red-500 focus-visible:ring-red-500" : "border-[#4d4637]"}`; }
+function Preview({ label, value, status, positive }: { label: string; value: string; status?: HalalStatus; positive?: boolean }) { const color = status === "compliant" || positive === true ? "text-halal-compliant" : status === "non_compliant" || positive === false ? "text-halal-nonCompliant" : status === "debated" ? "text-halal-debated" : "text-[#ffffff]"; return <div className="flex items-center justify-between py-2"><span className="text-[rgba(255,255,255,0.6)]">{label}</span><strong className={color}>{value}</strong></div>; }
+function ErrorMessage({ children }: { children: React.ReactNode }) { return <p className="flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300"><CircleAlert className="h-4 w-4 shrink-0" />{children}</p>; }

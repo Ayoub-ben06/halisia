@@ -18,7 +18,7 @@ function IconButton({
       type="button"
       aria-label={ariaLabel}
       onClick={onClick}
-      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#282b28] text-[#d0c5b2] hover:text-[#e2e3df]"
+      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1c1a] text-[rgba(255,255,255,0.6)] hover:text-[#ffffff]"
     >
       <Icon className="h-4 w-4" />
     </button>

@@ -91,7 +91,7 @@ export default function TestScreeningPage() {
     result.debtPassed &&
     result.interestPassed;
   return (
-    <main className="min-h-screen bg-[#0D1B2A] px-4 py-12 text-white">
+    <main className="min-h-screen bg-[#111412] px-4 py-12 text-white">
       <div className="mx-auto max-w-2xl">
         <h1 className="mb-6 text-3xl font-bold text-[#C9A84C]">
           Screening halal
@@ -112,11 +112,11 @@ export default function TestScreeningPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded bg-[#C9A84C] px-5 py-3 font-bold text-[#0D1B2A] disabled:opacity-60"
+            className="rounded bg-[#C9A84C] px-5 py-3 font-bold text-[#111412] disabled:opacity-60"
           >
             {loading ? (
               <span className="inline-flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0D1B2A] border-t-transparent" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#111412] border-t-transparent" />
                 Analyse en cours…
               </span>
             ) : (

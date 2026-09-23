@@ -1,0 +1,1326 @@
+{
+  "generatedAt": "2026-09-22T21:25:38.169Z",
+  "universe": {
+    "count": 100,
+    "source": "curated US large-cap universe"
+  },
+  "methodology": "AAOIFI_SCREENING_V1",
+  "musaffa": {
+    "source": "public Musaffa stock pages scraped sequentially",
+    "delayMs": 1000,
+    "mapping": {
+      "HALAL": "COMPLIANT",
+      "NOT_HALAL": "NON_COMPLIANT",
+      "DOUBTFUL": "REVIEW_REQUIRED"
+    }
+  },
+  "summary": {
+    "total": 100,
+    "comparable": 0,
+    "matches": 0,
+    "mismatches": 0,
+    "matchRate": null
+  },
+  "results": [
+    {
+      "ticker": "AAPL",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "AAPL",
+        "sourceUrl": "https://musaffa.com/stock/AAPL/",
+        "scrapedAt": "2026-09-22T21:23:57.706Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MSFT",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MSFT",
+        "sourceUrl": "https://musaffa.com/stock/MSFT/",
+        "scrapedAt": "2026-09-22T21:23:58.731Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "AMZN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "AMZN",
+        "sourceUrl": "https://musaffa.com/stock/AMZN/",
+        "scrapedAt": "2026-09-22T21:23:59.736Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "NVDA",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "NVDA",
+        "sourceUrl": "https://musaffa.com/stock/NVDA/",
+        "scrapedAt": "2026-09-22T21:24:00.743Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "GOOGL",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "GOOGL",
+        "sourceUrl": "https://musaffa.com/stock/GOOGL/",
+        "scrapedAt": "2026-09-22T21:24:01.748Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "META",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "META",
+        "sourceUrl": "https://musaffa.com/stock/META/",
+        "scrapedAt": "2026-09-22T21:24:02.754Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "AVGO",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "AVGO",
+        "sourceUrl": "https://musaffa.com/stock/AVGO/",
+        "scrapedAt": "2026-09-22T21:24:03.759Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "GOOG",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "GOOG",
+        "sourceUrl": "https://musaffa.com/stock/GOOG/",
+        "scrapedAt": "2026-09-22T21:24:04.764Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "TSLA",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "TSLA",
+        "sourceUrl": "https://musaffa.com/stock/TSLA/",
+        "scrapedAt": "2026-09-22T21:24:05.769Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "BRK-B",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "BRK-B",
+        "sourceUrl": "https://musaffa.com/stock/BRK-B/",
+        "scrapedAt": "2026-09-22T21:24:06.772Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "LLY",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "LLY",
+        "sourceUrl": "https://musaffa.com/stock/LLY/",
+        "scrapedAt": "2026-09-22T21:24:07.778Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "V",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "V",
+        "sourceUrl": "https://musaffa.com/stock/V/",
+        "scrapedAt": "2026-09-22T21:24:08.783Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "JPM",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "JPM",
+        "sourceUrl": "https://musaffa.com/stock/JPM/",
+        "scrapedAt": "2026-09-22T21:24:09.787Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "WMT",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "WMT",
+        "sourceUrl": "https://musaffa.com/stock/WMT/",
+        "scrapedAt": "2026-09-22T21:24:10.793Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ORCL",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ORCL",
+        "sourceUrl": "https://musaffa.com/stock/ORCL/",
+        "scrapedAt": "2026-09-22T21:24:11.799Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MA",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MA",
+        "sourceUrl": "https://musaffa.com/stock/MA/",
+        "scrapedAt": "2026-09-22T21:24:12.804Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "XOM",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "XOM",
+        "sourceUrl": "https://musaffa.com/stock/XOM/",
+        "scrapedAt": "2026-09-22T21:24:13.805Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "COST",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "COST",
+        "sourceUrl": "https://musaffa.com/stock/COST/",
+        "scrapedAt": "2026-09-22T21:24:14.808Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "JNJ",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "JNJ",
+        "sourceUrl": "https://musaffa.com/stock/JNJ/",
+        "scrapedAt": "2026-09-22T21:24:15.811Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "HD",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "HD",
+        "sourceUrl": "https://musaffa.com/stock/HD/",
+        "scrapedAt": "2026-09-22T21:24:16.814Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "PG",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "PG",
+        "sourceUrl": "https://musaffa.com/stock/PG/",
+        "scrapedAt": "2026-09-22T21:24:17.818Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "NFLX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "NFLX",
+        "sourceUrl": "https://musaffa.com/stock/NFLX/",
+        "scrapedAt": "2026-09-22T21:24:18.819Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "BAC",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "BAC",
+        "sourceUrl": "https://musaffa.com/stock/BAC/",
+        "scrapedAt": "2026-09-22T21:24:19.821Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ABBV",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ABBV",
+        "sourceUrl": "https://musaffa.com/stock/ABBV/",
+        "scrapedAt": "2026-09-22T21:24:20.824Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CVX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CVX",
+        "sourceUrl": "https://musaffa.com/stock/CVX/",
+        "scrapedAt": "2026-09-22T21:24:21.826Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CRM",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CRM",
+        "sourceUrl": "https://musaffa.com/stock/CRM/",
+        "scrapedAt": "2026-09-22T21:24:22.830Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "KO",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "KO",
+        "sourceUrl": "https://musaffa.com/stock/KO/",
+        "scrapedAt": "2026-09-22T21:24:23.832Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MRK",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MRK",
+        "sourceUrl": "https://musaffa.com/stock/MRK/",
+        "scrapedAt": "2026-09-22T21:24:24.836Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "AMD",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "AMD",
+        "sourceUrl": "https://musaffa.com/stock/AMD/",
+        "scrapedAt": "2026-09-22T21:24:25.839Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "PEP",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "PEP",
+        "sourceUrl": "https://musaffa.com/stock/PEP/",
+        "scrapedAt": "2026-09-22T21:24:26.844Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ADBE",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ADBE",
+        "sourceUrl": "https://musaffa.com/stock/ADBE/",
+        "scrapedAt": "2026-09-22T21:24:27.846Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "TMO",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "TMO",
+        "sourceUrl": "https://musaffa.com/stock/TMO/",
+        "scrapedAt": "2026-09-22T21:24:28.849Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ACN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ACN",
+        "sourceUrl": "https://musaffa.com/stock/ACN/",
+        "scrapedAt": "2026-09-22T21:24:29.853Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MCD",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MCD",
+        "sourceUrl": "https://musaffa.com/stock/MCD/",
+        "scrapedAt": "2026-09-22T21:24:30.856Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CSCO",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CSCO",
+        "sourceUrl": "https://musaffa.com/stock/CSCO/",
+        "scrapedAt": "2026-09-22T21:24:31.860Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ABT",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ABT",
+        "sourceUrl": "https://musaffa.com/stock/ABT/",
+        "scrapedAt": "2026-09-22T21:24:32.864Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "LIN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "LIN",
+        "sourceUrl": "https://musaffa.com/stock/LIN/",
+        "scrapedAt": "2026-09-22T21:24:33.867Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "DHR",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "DHR",
+        "sourceUrl": "https://musaffa.com/stock/DHR/",
+        "scrapedAt": "2026-09-22T21:24:34.870Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "WFC",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "WFC",
+        "sourceUrl": "https://musaffa.com/stock/WFC/",
+        "scrapedAt": "2026-09-22T21:24:35.874Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "INTC",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "INTC",
+        "sourceUrl": "https://musaffa.com/stock/INTC/",
+        "scrapedAt": "2026-09-22T21:24:36.877Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CMCSA",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CMCSA",
+        "sourceUrl": "https://musaffa.com/stock/CMCSA/",
+        "scrapedAt": "2026-09-22T21:24:37.882Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "DIS",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "DIS",
+        "sourceUrl": "https://musaffa.com/stock/DIS/",
+        "scrapedAt": "2026-09-22T21:24:38.886Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "VZ",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "VZ",
+        "sourceUrl": "https://musaffa.com/stock/VZ/",
+        "scrapedAt": "2026-09-22T21:24:39.889Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "INTU",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "INTU",
+        "sourceUrl": "https://musaffa.com/stock/INTU/",
+        "scrapedAt": "2026-09-22T21:24:40.893Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "QCOM",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "QCOM",
+        "sourceUrl": "https://musaffa.com/stock/QCOM/",
+        "scrapedAt": "2026-09-22T21:24:41.898Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "AMGN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "AMGN",
+        "sourceUrl": "https://musaffa.com/stock/AMGN/",
+        "scrapedAt": "2026-09-22T21:24:42.901Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "IBM",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "IBM",
+        "sourceUrl": "https://musaffa.com/stock/IBM/",
+        "scrapedAt": "2026-09-22T21:24:43.906Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "TXN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "TXN",
+        "sourceUrl": "https://musaffa.com/stock/TXN/",
+        "scrapedAt": "2026-09-22T21:24:44.908Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "PFE",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "PFE",
+        "sourceUrl": "https://musaffa.com/stock/PFE/",
+        "scrapedAt": "2026-09-22T21:24:45.912Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CAT",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CAT",
+        "sourceUrl": "https://musaffa.com/stock/CAT/",
+        "scrapedAt": "2026-09-22T21:24:46.916Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "PM",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "PM",
+        "sourceUrl": "https://musaffa.com/stock/PM/",
+        "scrapedAt": "2026-09-22T21:24:47.922Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "NOW",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "NOW",
+        "sourceUrl": "https://musaffa.com/stock/NOW/",
+        "scrapedAt": "2026-09-22T21:24:48.927Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "NEE",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "NEE",
+        "sourceUrl": "https://musaffa.com/stock/NEE/",
+        "scrapedAt": "2026-09-22T21:24:49.931Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "UNP",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "UNP",
+        "sourceUrl": "https://musaffa.com/stock/UNP/",
+        "scrapedAt": "2026-09-22T21:24:50.935Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "RTX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "RTX",
+        "sourceUrl": "https://musaffa.com/stock/RTX/",
+        "scrapedAt": "2026-09-22T21:24:51.939Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "LOW",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "LOW",
+        "sourceUrl": "https://musaffa.com/stock/LOW/",
+        "scrapedAt": "2026-09-22T21:24:52.943Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "HON",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "HON",
+        "sourceUrl": "https://musaffa.com/stock/HON/",
+        "scrapedAt": "2026-09-22T21:24:53.947Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "SPGI",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "SPGI",
+        "sourceUrl": "https://musaffa.com/stock/SPGI/",
+        "scrapedAt": "2026-09-22T21:24:54.951Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "GE",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "GE",
+        "sourceUrl": "https://musaffa.com/stock/GE/",
+        "scrapedAt": "2026-09-22T21:24:55.954Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "BA",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "BA",
+        "sourceUrl": "https://musaffa.com/stock/BA/",
+        "scrapedAt": "2026-09-22T21:24:56.958Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "UPS",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "UPS",
+        "sourceUrl": "https://musaffa.com/stock/UPS/",
+        "scrapedAt": "2026-09-22T21:24:57.962Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "COP",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "COP",
+        "sourceUrl": "https://musaffa.com/stock/COP/",
+        "scrapedAt": "2026-09-22T21:24:58.965Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "PLD",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "PLD",
+        "sourceUrl": "https://musaffa.com/stock/PLD/",
+        "scrapedAt": "2026-09-22T21:24:59.969Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "GS",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "GS",
+        "sourceUrl": "https://musaffa.com/stock/GS/",
+        "scrapedAt": "2026-09-22T21:25:00.971Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ELV",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ELV",
+        "sourceUrl": "https://musaffa.com/stock/ELV/",
+        "scrapedAt": "2026-09-22T21:25:01.976Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "LMT",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "LMT",
+        "sourceUrl": "https://musaffa.com/stock/LMT/",
+        "scrapedAt": "2026-09-22T21:25:02.980Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "DE",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "DE",
+        "sourceUrl": "https://musaffa.com/stock/DE/",
+        "scrapedAt": "2026-09-22T21:25:03.982Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "BLK",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "BLK",
+        "sourceUrl": "https://musaffa.com/stock/BLK/",
+        "scrapedAt": "2026-09-22T21:25:04.986Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "SYK",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "SYK",
+        "sourceUrl": "https://musaffa.com/stock/SYK/",
+        "scrapedAt": "2026-09-22T21:25:05.987Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "TJX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "TJX",
+        "sourceUrl": "https://musaffa.com/stock/TJX/",
+        "scrapedAt": "2026-09-22T21:25:06.989Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ADP",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ADP",
+        "sourceUrl": "https://musaffa.com/stock/ADP/",
+        "scrapedAt": "2026-09-22T21:25:07.991Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MDT",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MDT",
+        "sourceUrl": "https://musaffa.com/stock/MDT/",
+        "scrapedAt": "2026-09-22T21:25:08.994Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "GILD",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "GILD",
+        "sourceUrl": "https://musaffa.com/stock/GILD/",
+        "scrapedAt": "2026-09-22T21:25:10.002Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "VRTX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "VRTX",
+        "sourceUrl": "https://musaffa.com/stock/VRTX/",
+        "scrapedAt": "2026-09-22T21:25:11.006Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ISRG",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ISRG",
+        "sourceUrl": "https://musaffa.com/stock/ISRG/",
+        "scrapedAt": "2026-09-22T21:25:12.008Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ADI",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ADI",
+        "sourceUrl": "https://musaffa.com/stock/ADI/",
+        "scrapedAt": "2026-09-22T21:25:13.013Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "REGN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "REGN",
+        "sourceUrl": "https://musaffa.com/stock/REGN/",
+        "scrapedAt": "2026-09-22T21:25:14.017Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MMC",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MMC",
+        "sourceUrl": "https://musaffa.com/stock/MMC/",
+        "scrapedAt": "2026-09-22T21:25:15.020Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "C",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "C",
+        "sourceUrl": "https://musaffa.com/stock/C/",
+        "scrapedAt": "2026-09-22T21:25:16.024Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ETN",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ETN",
+        "sourceUrl": "https://musaffa.com/stock/ETN/",
+        "scrapedAt": "2026-09-22T21:25:17.029Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "LRCX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "LRCX",
+        "sourceUrl": "https://musaffa.com/stock/LRCX/",
+        "scrapedAt": "2026-09-22T21:25:18.034Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CB",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CB",
+        "sourceUrl": "https://musaffa.com/stock/CB/",
+        "scrapedAt": "2026-09-22T21:25:19.038Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "MO",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "MO",
+        "sourceUrl": "https://musaffa.com/stock/MO/",
+        "scrapedAt": "2026-09-22T21:25:20.041Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "SO",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "SO",
+        "sourceUrl": "https://musaffa.com/stock/SO/",
+        "scrapedAt": "2026-09-22T21:25:21.043Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "DUK",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "DUK",
+        "sourceUrl": "https://musaffa.com/stock/DUK/",
+        "scrapedAt": "2026-09-22T21:25:22.045Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "BSX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "BSX",
+        "sourceUrl": "https://musaffa.com/stock/BSX/",
+        "scrapedAt": "2026-09-22T21:25:23.049Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "PGR",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "PGR",
+        "sourceUrl": "https://musaffa.com/stock/PGR/",
+        "scrapedAt": "2026-09-22T21:25:24.054Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CI",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CI",
+        "sourceUrl": "https://musaffa.com/stock/CI/",
+        "scrapedAt": "2026-09-22T21:25:25.056Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ZTS",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ZTS",
+        "sourceUrl": "https://musaffa.com/stock/ZTS/",
+        "scrapedAt": "2026-09-22T21:25:26.061Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "BDX",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "BDX",
+        "sourceUrl": "https://musaffa.com/stock/BDX/",
+        "scrapedAt": "2026-09-22T21:25:27.067Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "SCHW",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "SCHW",
+        "sourceUrl": "https://musaffa.com/stock/SCHW/",
+        "scrapedAt": "2026-09-22T21:25:28.072Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "NOC",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "NOC",
+        "sourceUrl": "https://musaffa.com/stock/NOC/",
+        "scrapedAt": "2026-09-22T21:25:29.076Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "CME",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "CME",
+        "sourceUrl": "https://musaffa.com/stock/CME/",
+        "scrapedAt": "2026-09-22T21:25:30.079Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "SLB",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "SLB",
+        "sourceUrl": "https://musaffa.com/stock/SLB/",
+        "scrapedAt": "2026-09-22T21:25:31.084Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "EOG",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "EOG",
+        "sourceUrl": "https://musaffa.com/stock/EOG/",
+        "scrapedAt": "2026-09-22T21:25:32.087Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "FIS",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "FIS",
+        "sourceUrl": "https://musaffa.com/stock/FIS/",
+        "scrapedAt": "2026-09-22T21:25:33.090Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ITW",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ITW",
+        "sourceUrl": "https://musaffa.com/stock/ITW/",
+        "scrapedAt": "2026-09-22T21:25:34.093Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "ICE",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "ICE",
+        "sourceUrl": "https://musaffa.com/stock/ICE/",
+        "scrapedAt": "2026-09-22T21:25:35.096Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "APD",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "APD",
+        "sourceUrl": "https://musaffa.com/stock/APD/",
+        "scrapedAt": "2026-09-22T21:25:36.098Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    },
+    {
+      "ticker": "SNPS",
+      "ours": "ERROR",
+      "musaffa": "NOT_AVAILABLE",
+      "match": null,
+      "musaffaResult": {
+        "stockName": "SNPS",
+        "sourceUrl": "https://musaffa.com/stock/SNPS/",
+        "scrapedAt": "2026-09-22T21:25:37.100Z",
+        "error": "fetch failed"
+      },
+      "error": "SEC request failed (https://www.sec.gov/files/company_tickers.json): fetch failed"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ const TROY_OUNCE_IN_GRAMS = 31.1035;
 
 export type LivePrices = {
   btc_eur: number | null;
+  btc_change_percent: number | null;
   gold_eur_per_gram: number | null;
   timestamp: string;
   errors: {
@@ -55,6 +56,7 @@ function goldUsdPerOunce(payload: unknown): number | null {
 export async function getLivePrices(): Promise<LivePrices> {
   const result: LivePrices = {
     btc_eur: null,
+    btc_change_percent: null,
     gold_eur_per_gram: null,
     timestamp: new Date().toISOString(),
     errors: {},
@@ -62,7 +64,7 @@ export async function getLivePrices(): Promise<LivePrices> {
   };
 
   const [bitcoinResult, goldResult, exchangeRateResult] = await Promise.allSettled([
-    fetchJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur&precision=full"),
+    fetchJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur&precision=full&include_24hr_change=true"),
     fetchJson("https://metals.live/api/spot/gold"),
     fetchUsdPerEur(),
   ]);
@@ -73,6 +75,8 @@ export async function getLivePrices(): Promise<LivePrices> {
     );
     if (Number.isFinite(price)) {
       result.btc_eur = price;
+      const change = Number((bitcoinResult.value as { bitcoin?: { eur_24h_change?: unknown } })?.bitcoin?.eur_24h_change);
+      result.btc_change_percent = Number.isFinite(change) ? change : null;
       result.sources.bitcoin = "CoinGecko";
     } else {
       result.errors.bitcoin = "Réponse CoinGecko invalide";

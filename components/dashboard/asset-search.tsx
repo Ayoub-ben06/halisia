@@ -92,7 +92,7 @@ export function AssetSearch({ variant = "default" }: { variant?: "default" | "v1
 
   return (
     <div ref={containerRef} className="relative mr-auto w-full max-w-xl">
-      <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${variant === "v1" ? "text-[#d0c5b2]" : "text-muted-foreground"}`} />
+      <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${variant === "v1" ? "text-[rgba(255,255,255,0.6)]" : "text-muted-foreground"}`} />
       <input
         type="search"
         value={query}
@@ -100,7 +100,7 @@ export function AssetSearch({ variant = "default" }: { variant?: "default" | "v1
         onFocus={() => query.trim() && setOpen(true)}
         placeholder="Rechercher un actif, une alerte..."
         className={variant === "v1"
-          ? "h-10 w-full rounded-xl border border-[#4d4637]/10 bg-[#1e201e] pl-9 pr-3 text-sm text-[#e2e3df] outline-none placeholder:text-[#d0c5b2]/50 transition-colors focus:border-[#c9a84c]/50"
+          ? "h-10 w-full rounded-xl border border-white/[0.05] bg-[#1a1c1a] pl-9 pr-3 text-sm text-[#ffffff] outline-none placeholder:text-[rgba(255,255,255,0.6)]/50 transition-colors focus:border-[#c9a84c]/50"
           : "h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"}
         aria-label="Rechercher un actif"
         aria-expanded={open}
@@ -108,7 +108,7 @@ export function AssetSearch({ variant = "default" }: { variant?: "default" | "v1
 
       {open && (
         <div className={variant === "v1"
-          ? "absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-[#4d4637]/20 bg-[#1e201e] text-[#e2e3df] shadow-lg"
+          ? "absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-white/[0.05] bg-[#1a1c1a] text-[#ffffff] shadow-lg"
           : "absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg"}>
           {loading ? (
             <p className="px-4 py-3 text-sm text-muted-foreground">Recherche...</p>
