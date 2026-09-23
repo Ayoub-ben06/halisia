@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchYahooPrices } from "@/lib/yahoo-prices";
 import { getLivePrices } from "@/lib/live-prices";
-import { halalMock } from "@/lib/halal-mock";
+import { assetHalalStatus, getTickerScreenings, normalizeTicker } from "@/lib/halal-screening";
 import { estimateDividendsReceived } from "@/lib/aaoifi/dividends";
 import { calculatePurification } from "@/lib/aaoifi/purification";
+import { displaySettings } from "@/lib/user-preferences";
 import {
   PortfolioView,
   type PortfolioRow,
@@ -12,11 +13,7 @@ import {
 
 const DAY_MS = 86_400_000;
 
-function statusFromScreening(status: string): PortfolioRow["status"] {
-  if (status === "COMPLIANT") return "compliant";
-  if (status === "NON_COMPLIANT") return "non_compliant";
-  return "debated";
-}
+export const dynamic = "force-dynamic";
 
 export default async function PortfolioPage() {
   const supabase = createClient();
@@ -24,12 +21,13 @@ export default async function PortfolioPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [assetsResult, cryptoResult, goldResult, livePrices] =
+  const [assetsResult, cryptoResult, goldResult, livePrices, changesResult] =
     await Promise.all([
       supabase.from("assets").select("*").eq("user_id", user.id),
       supabase.from("crypto_assets").select("*").eq("user_id", user.id),
       supabase.from("gold_assets").select("*").eq("user_id", user.id),
       getLivePrices(),
+      supabase.from("compliance_changes").select("ticker, change_date").eq("user_id", user.id).eq("resolved", false),
     ]);
   const loadError =
     assetsResult.error ?? cryptoResult.error ?? goldResult.error;
@@ -38,22 +36,9 @@ export default async function PortfolioPage() {
       `Impossible de charger le portefeuille : ${loadError.message}`,
     );
   const assets = assetsResult.data ?? [];
-  const stockTickers = Array.from(
-    new Set(
-      assets
-        .filter((asset) => asset.type === "stock" && asset.ticker)
-        .map((asset) => asset.ticker!.trim().toUpperCase()),
-    ),
+  const screenings = await getTickerScreenings(
+    assets.filter((asset) => asset.type === "stock" && asset.ticker).map((asset) => asset.ticker!),
   );
-  // Both tables are optional for rendering: until the compliance migration is
-  // applied or the cron has run, the portfolio falls back to stored statuses.
-  const [screeningResult, changesResult] = await Promise.all([
-    stockTickers.length
-      ? supabase.from("screening_cache").select("ticker, status, purification_ratio, error").in("ticker", stockTickers)
-      : Promise.resolve({ data: [] as { ticker: string; status: string; purification_ratio: number | null; error: string | null }[] }),
-    supabase.from("compliance_changes").select("ticker, change_date").eq("user_id", user.id).eq("resolved", false),
-  ]);
-  const screenings = new Map((screeningResult.data ?? []).map((row) => [row.ticker, row]));
   const openChanges = new Map((changesResult.data ?? []).map((row) => [row.ticker, row.change_date]));
   const now = Date.now();
   const yahooPrices = await fetchYahooPrices(
@@ -71,17 +56,11 @@ export default async function PortfolioPage() {
       const price =
         (asset.isin ? yahooPrices[asset.isin] : null) ??
         Number(asset.current_price ?? asset.average_buy_price);
-      const ticker = asset.ticker ?? asset.isin ?? "ACTIF";
-      const normalizedTicker = asset.ticker?.trim().toUpperCase() ?? "";
-      const screening = asset.type === "stock" ? screenings.get(normalizedTicker) : undefined;
-      const mock = halalMock[ticker] ?? halalMock[ticker.split(".")[0]];
-      const status = screening && !screening.error
-        ? statusFromScreening(screening.status)
-        : asset.halal_status !== "unknown"
-          ? asset.halal_status
-          : mock?.status ?? (/ISLAMIC/i.test(asset.name) ? "compliant" : "debated");
-      const purificationRatio = status !== "non_compliant" && screening?.purification_ratio != null
-        ? Number(screening.purification_ratio)
+      const normalizedTicker = asset.ticker ? normalizeTicker(asset.ticker) : "";
+      const screening = asset.type === "stock" ? screenings[normalizedTicker] : undefined;
+      const status = assetHalalStatus(asset, screenings);
+      const purificationRatio = status !== "non_compliant" && screening?.purificationRatio != null
+        ? screening.purificationRatio
         : null;
       const dividends = purificationRatio
         ? await estimateDividendsReceived(normalizedTicker, Number(asset.quantity), asset.purchase_date)
@@ -90,7 +69,7 @@ export default async function PortfolioPage() {
         ? 0
         : purificationRatio !== null && dividends !== null
           ? calculatePurification(purificationRatio, dividends)
-          : status === "compliant" && !screening ? 0 : null;
+          : status === "compliant" && asset.type !== "stock" ? 0 : null;
       const changeDate = openChanges.get(normalizedTicker);
       const complianceDay = changeDate
         ? Math.min(90, Math.max(0, Math.floor((now - new Date(changeDate).getTime()) / DAY_MS)))
@@ -104,7 +83,9 @@ export default async function PortfolioPage() {
             : "Action";
       return {
         id: asset.id,
+        source: "assets",
         ticker: asset.ticker ?? asset.name.slice(0, 4).toUpperCase(),
+        detailTicker: asset.ticker,
         name: asset.name,
         type: displayType,
         account: asset.account_type ?? "CTO",
@@ -119,7 +100,9 @@ export default async function PortfolioPage() {
     }))),
     ...(cryptoResult.data ?? []).map((asset) => ({
       id: asset.id,
+      source: "crypto_assets" as const,
       ticker: asset.ticker,
+      detailTicker: `${asset.ticker}-EUR`,
       name: asset.name,
       type: "Crypto" as const,
       account: "Crypto",
@@ -129,14 +112,14 @@ export default async function PortfolioPage() {
         asset.ticker === "BTC"
           ? (livePrices.btc_eur ?? Number(asset.current_price))
           : Number(asset.current_price),
-      status: (asset.halal_status === "compliant"
-        ? "compliant"
-        : "debated") as PortfolioRow["status"],
+      status: "debated" as const,
       purification: 0,
     })),
     ...(goldResult.data ?? []).map((asset) => ({
       id: asset.id,
+      source: "gold_assets" as const,
       ticker: asset.ticker,
+      detailTicker: null,
       name: asset.name,
       type: "Or" as const,
       account: "Or",
@@ -148,5 +131,6 @@ export default async function PortfolioPage() {
       purification: 0,
     })),
   ];
-  return <PortfolioView rows={rows} />;
+  const display = await displaySettings(user);
+  return <PortfolioView rows={rows} displayCurrency={display.currency} displayRate={display.rate} />;
 }

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchYahooQuotes } from "@/lib/yahoo-quote";
-import { resolveHalalStatus } from "@/lib/halal-status";
-import { sparklinePoints } from "@/lib/sparkline";
+import { fetchSparklines } from "@/lib/yahoo-sparkline";
+import { assetHalalStatus, getTickerScreenings } from "@/lib/halal-screening";
 import {
   WatchlistView,
   type WatchlistAlert,
@@ -37,14 +37,18 @@ export default async function WatchlistPage() {
   }
 
   const watchlistRows = watchlistResult.data ?? [];
-  const quotes = await fetchYahooQuotes(watchlistRows.map((row) => row.ticker));
+  const tickers = watchlistRows.map((row) => row.ticker);
+  const [quotes, sparklines, screenings] = await Promise.all([
+    fetchYahooQuotes(tickers),
+    fetchSparklines(tickers),
+    getTickerScreenings(watchlistRows.filter((row) => row.type === "stock").map((row) => row.ticker)),
+  ]);
 
   const items: WatchlistItem[] = watchlistRows.map((row) => {
     const quote = quotes[row.ticker];
-    const halalStatus = resolveHalalStatus(row.ticker, row.name);
+    const halalStatus = assetHalalStatus(row, screenings);
     const price = quote?.price ?? null;
     const changePercent = quote?.changePercent ?? null;
-    const positive = (changePercent ?? 0) >= 0;
 
     return {
       id: row.id,
@@ -58,8 +62,7 @@ export default async function WatchlistPage() {
       change: quote?.change ?? null,
       changePercent,
       halalStatus,
-      sparkline:
-        price != null ? sparklinePoints(row.ticker, price, positive) : [],
+      sparkline: sparklines[row.ticker] ?? [],
     };
   });
 

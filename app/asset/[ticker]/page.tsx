@@ -4,9 +4,8 @@ import { CheckCircle2, WalletCards } from "lucide-react";
 import YahooFinance from "yahoo-finance2";
 import { ExpandableDescription } from "@/components/asset/expandable-description";
 import { createClient } from "@/lib/supabase/server";
-import { runAAOIFI } from "@/lib/aaoifi/engine";
-import { getFinancialData } from "@/lib/aaoifi/data-provider";
-import type { FinancialValue } from "@/lib/aaoifi/types";
+import { getScreeningResult } from "@/lib/halal-screening";
+import type { ScreeningResult } from "@/lib/aaoifi/types";
 import { estimateDividendsReceived } from "@/lib/aaoifi/dividends";
 import { calculatePurification, formatPurificationRatio } from "@/lib/aaoifi/purification";
 
@@ -40,7 +39,7 @@ export default async function AssetPage({ params }: { params: { ticker: string }
   try {
     quote = await yahooFinance.quote(ticker);
   } catch {
-    redirect("/dashboard_v1?error=asset-not-found");
+    redirect("/dashboard?error=asset-not-found");
   }
 
   const [details, assetsResult, cryptoResult, goldResult] = await Promise.all([
@@ -90,12 +89,10 @@ export default async function AssetPage({ params }: { params: { ticker: string }
   const dayChange = quote.regularMarketChange;
   const dayChangePercent = quote.regularMarketChangePercent;
   const positiveDay = (dayChange ?? 0) >= 0;
-  let screening = null;
+  let screening: ScreeningResult | null = null;
   let screeningError = "";
   try {
-    const financialData = await getFinancialData(ticker);
-    if (!financialData.marketCapitalization && typeof quote.marketCap === "number") financialData.marketCapitalization = { value: quote.marketCap, currency: quote.currency ?? "USD", source: { provider: "Yahoo Finance", fiscalPeriod: financialData.fiscalPeriod, field: "marketCap" }, confidence: "MEDIUM" } satisfies FinancialValue;
-    screening = runAAOIFI(financialData);
+    screening = (await getScreeningResult(ticker)).result;
   } catch (error) {
     screeningError = error instanceof Error ? error.message : "Erreur inconnue";
   }
@@ -118,7 +115,7 @@ export default async function AssetPage({ params }: { params: { ticker: string }
   return (
     <div className="min-h-screen bg-[#111412] text-[#ffffff]">
       <main className="mx-auto max-w-[1400px] p-4 sm:p-8">
-        <Link href="/dashboard_v1" className="text-xs text-[rgba(255,255,255,0.6)] hover:text-[#c9a84c]">← Retour au dashboard</Link>
+        <Link href="/dashboard" className="text-xs text-[rgba(255,255,255,0.6)] hover:text-[#c9a84c]">← Retour au dashboard</Link>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-12">
           <div className="space-y-6 lg:col-span-8">
@@ -133,7 +130,7 @@ export default async function AssetPage({ params }: { params: { ticker: string }
             </section>
 
             <section className={`rounded-[2rem] border p-6 sm:p-8 ${screening?.status === "COMPLIANT" ? "border-halal-compliant/30 bg-gradient-to-r from-halal-compliant/10 to-[#1a1c1a]" : "border-white/[0.05] bg-[#1a1c1a]"}`}>
-              {screening ? <><h2 className={`flex items-center gap-3 text-2xl font-bold ${screening.status === "COMPLIANT" ? "text-halal-compliant" : screening.status === "NON_COMPLIANT" ? "text-halal-nonCompliant" : "text-halal-debated"}`}><CheckCircle2 className="h-6 w-6" />{screening.status}</h2><p className="mt-2 text-xs text-[rgba(255,255,255,0.6)]">{screening.methodology} · {screening.fiscalPeriod}</p>{(screening.reason || screening.note) && <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-xs leading-5">{screening.reason && <p className="text-[#ffffff]">{screening.reason}</p>}{screening.note && <p className="mt-1 text-[rgba(255,255,255,0.6)]">{screening.note}</p>}</div>}{purificationText && <p className="mt-5 text-sm font-semibold text-[#e6c364]">{purificationText}{fortuneoHolding && dividendsReceived ? <span className="ml-2 text-[10px] font-normal text-[rgba(255,255,255,0.6)]">({(screening.purificationRatio! * 100).toFixed(2)} % de {money.format(dividendsReceived)} de dividendes estimés)</span> : null}</p>}<p className="mt-7 text-sm leading-6 text-[#ffffff]">{screening.business.explanation}</p><div className="mt-7 grid gap-4 sm:grid-cols-2">{screening.criteria.map((criterion) => <Metric key={criterion.key} label={criterion.label} value={criterion.ratio !== undefined ? `${(criterion.ratio * 100).toFixed(2)} %` : criterion.status} hint={criterion.threshold !== undefined ? `Limite : ${criterion.operator} ${(criterion.threshold * 100).toFixed(0)} %` : `Confiance : ${criterion.confidence}`} />)}</div><Link href={`/screening?symbol=${encodeURIComponent(screening.ticker)}`} className="mt-6 inline-block text-xs font-bold text-[#e6c364] hover:underline">Voir le détail complet du screening →</Link><p className="mt-5 text-[10px] leading-4 text-[rgba(255,255,255,0.6)]">Les résultats sont basés sur les critères AAOIFI et les données financières publiques disponibles. Certains cas limites nécessitent une vérification manuelle. Ce n&apos;est pas une fatwa.</p></> : <><h2 className="text-xl font-bold text-[rgba(255,255,255,0.6)]">Analyse AAOIFI indisponible</h2><p className="mt-3 text-sm text-[rgba(255,255,255,0.6)]">Les données financières publiques ne sont pas accessibles pour cet actif.</p>{screeningError && <p className="mt-3 break-words text-xs text-red-400">Détail technique : {screeningError}</p>}</>}
+              {screening ? <><h2 className={`flex items-center gap-3 text-2xl font-bold ${screening.status === "COMPLIANT" ? "text-halal-compliant" : screening.status === "NON_COMPLIANT" ? "text-halal-nonCompliant" : "text-halal-debated"}`}><CheckCircle2 className="h-6 w-6" />{screening.status}</h2><p className="mt-2 text-xs text-[rgba(255,255,255,0.6)]">{screening.methodology} · {screening.fiscalPeriod}</p>{(screening.reason || screening.note) && <div className="mt-5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-xs leading-5">{screening.reason && <p className="text-[#ffffff]">{screening.reason}</p>}{screening.note && <p className="mt-1 text-[rgba(255,255,255,0.6)]">{screening.note}</p>}</div>}{purificationText && <p className="mt-5 text-sm font-semibold text-[#e6c364]">{purificationText}{fortuneoHolding && dividendsReceived ? <span className="ml-2 text-[10px] font-normal text-[rgba(255,255,255,0.6)]">({(screening.purificationRatio! * 100).toFixed(2)} % de {money.format(dividendsReceived)} de dividendes estimés)</span> : null}</p>}<p className="mt-7 text-sm leading-6 text-[#ffffff]">{screening.business.explanation}</p><div className="mt-7 grid gap-4 sm:grid-cols-2">{screening.criteria.map((criterion) => <Metric key={criterion.key} label={criterion.label} value={criterion.ratio !== undefined ? `${(criterion.ratio * 100).toFixed(2)} %` : criterion.status} hint={criterion.threshold !== undefined ? `Limite : ${criterion.operator} ${(criterion.threshold * 100).toFixed(0)} %` : `Confiance : ${criterion.confidence}`} />)}</div><Link href={`/screening?app=1&symbol=${encodeURIComponent(screening.ticker)}`} className="mt-6 inline-block text-xs font-bold text-[#e6c364] hover:underline">Voir le détail complet du screening →</Link><p className="mt-5 text-[10px] leading-4 text-[rgba(255,255,255,0.6)]">Les résultats sont basés sur les critères AAOIFI et les données financières publiques disponibles. Certains cas limites nécessitent une vérification manuelle. Ce n&apos;est pas une fatwa.</p></> : <><h2 className="text-xl font-bold text-[rgba(255,255,255,0.6)]">Analyse AAOIFI indisponible</h2><p className="mt-3 text-sm text-[rgba(255,255,255,0.6)]">Les données financières publiques ne sont pas accessibles pour cet actif.</p>{screeningError && <p className="mt-3 break-words text-xs text-red-400">Détail technique : {screeningError}</p>}</>}
             </section>
 
             {profile?.longBusinessSummary && <section className="rounded-[2rem] border border-white/[0.05] bg-[#1a1c1a] p-6 sm:p-8"><h2 className="text-xl font-medium">À propos</h2><div className="mt-5"><ExpandableDescription text={profile.longBusinessSummary} /></div></section>}
@@ -143,7 +140,7 @@ export default async function AssetPage({ params }: { params: { ticker: string }
             <section className="rounded-[2rem] border border-white/[0.05] bg-[#1a1c1a] p-6 sm:p-8">
               <h2 className="flex items-center gap-2 text-lg font-medium"><WalletCards className="h-5 w-5 text-[#c9a84c]" />Dans votre portefeuille</h2>
               {quantity !== null ? <div className="mt-7 divide-y divide-white/[0.05] text-sm"><PortfolioDatum label="Quantité" value={quantity.toLocaleString("fr-FR", { maximumFractionDigits: 8 })} /><PortfolioDatum label="PRU" value={averagePrice !== null ? money.format(averagePrice) : "—"} /><PortfolioDatum label="Valeur actuelle" value={currentValue !== null ? money.format(currentValue) : "—"} /><PortfolioDatum label="Plus-value" value={gain !== null ? `${gain >= 0 ? "+" : ""}${money.format(gain)} ${gainPercent !== null ? `(${gainPercent >= 0 ? "+" : ""}${gainPercent.toFixed(1)} %)` : ""}` : "—"} accent={gain !== null ? gain >= 0 : undefined} /><PortfolioDatum label="Compte" value={account ?? "—"} badge /></div> : <p className="mt-7 text-sm text-[rgba(255,255,255,0.6)]">Cet actif n&apos;est pas présent dans votre portefeuille.</p>}
-              <Link href="/dashboard_v1" className="mt-7 block rounded-xl border border-[#c9a84c] px-4 py-3 text-center text-xs font-bold text-[#e6c364] hover:bg-[#c9a84c]/10">Voir mon portefeuille</Link>
+              <Link href="/portfolio" className="mt-7 block rounded-xl border border-[#c9a84c] px-4 py-3 text-center text-xs font-bold text-[#e6c364] hover:bg-[#c9a84c]/10">Voir mon portefeuille</Link>
             </section>
 
             <section className="rounded-[2rem] border border-white/[0.05] bg-[#1a1c1a] p-6 sm:p-8"><h2 className="text-lg font-medium">Informations clés</h2><div className="mt-7 grid grid-cols-2 gap-x-6 gap-y-7"><KeyInfo label="Capitalisation" value={compact(marketCap, currency)} /><KeyInfo label="Secteur" value={profile?.industryDisp ?? profile?.sectorDisp ?? profile?.sector ?? "—"} /><KeyInfo label="Pays" value={profile?.country ?? "—"} /><KeyInfo label="Devise" value={currency} /></div></section>

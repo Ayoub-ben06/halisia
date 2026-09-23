@@ -8,7 +8,8 @@ export {};
 require("dotenv").config({ path: path.resolve(process.cwd(), ".env.local"), quiet: true });
 require("dotenv").config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
 
-const USER_ID = "68c82e2f-56df-4dac-88ed-32f8a3e2637b";
+const USER_ID = process.env.IMPORT_USER_ID ?? "";
+if (!USER_ID) throw new Error("Définissez IMPORT_USER_ID (identifiant Supabase de l’utilisateur cible) avant de lancer l’import.");
 const CSV_PATH = path.resolve(process.cwd(), "public", "data", "bitpanda-trades.csv");
 
 type CsvRow = Record<string, string>;

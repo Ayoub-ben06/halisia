@@ -9,6 +9,7 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  MoreHorizontal,
   Settings,
   ShieldCheck,
   WalletCards,
@@ -41,11 +42,14 @@ const navSections = [
 ];
 
 const navLinks = navSections.flatMap((section) => section.links);
+const mobilePrimary = ["/dashboard", "/portfolio", "/screening?app=1", "/zakat?app=1"];
+const mobileTabs = navLinks.filter((link) => mobilePrimary.includes(link.href));
+const mobileMore = navLinks.filter((link) => !mobilePrimary.includes(link.href));
 
 function isActive(pathname: string, href: string) {
   href = href.split("?")[0];
   if (href === "/dashboard") {
-    return pathname === "/dashboard" || pathname === "/dashboard_v1";
+    return pathname === "/dashboard";
   }
   if (href === "/portfolio") {
     return pathname === "/portfolio" || pathname.startsWith("/asset/");
@@ -86,8 +90,8 @@ export function Sidebar({ email }: { email?: string }) {
     <>
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 flex-col border-r border-border bg-[#191c1a] md:flex">
         <Link href="/dashboard" className="border-b border-border px-8 py-6">
-          <p className="text-2xl font-bold text-primary">Halal Invest FR</p>
-          <p className="mt-1 text-xs text-muted-foreground">Finance Halale</p>
+          <p className="text-2xl font-bold text-primary">Halisia</p>
+          <p className="mt-1 text-xs text-muted-foreground">Patrimoine halal</p>
         </Link>
 
         <nav className="flex-1 overflow-y-auto px-4 py-6">
@@ -135,17 +139,31 @@ export function Sidebar({ email }: { email?: string }) {
         </div>
       </aside>
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-border bg-[#191c1a] px-1 py-1 md:hidden">
-        {navLinks.map(({ label, href, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            aria-label={label}
-            className={linkClass(href, true)}
-          >
+      <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-50 flex border-t border-border bg-[#191c1a] px-1 py-1 md:hidden">
+        {mobileTabs.map(({ label, href, icon: Icon }) => (
+          <Link key={href} href={href} className={linkClass(href, true)}>
             <Icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium">{label === "Portefeuille" ? "Portef." : label}</span>
           </Link>
         ))}
+        <details className="group relative flex flex-1">
+          <summary className={`${linkClass("/__more", true)} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${mobileMore.some((link) => isActive(pathname, link.href)) ? "text-primary" : ""}`}>
+            <MoreHorizontal className="h-5 w-5" />
+            <span className="text-[10px] font-medium">Plus</span>
+          </summary>
+          <div className="absolute bottom-14 right-1 w-56 overflow-hidden rounded-xl border border-border bg-[#191c1a] py-2 shadow-2xl">
+            {mobileMore.map(({ label, href, icon: Icon }) => (
+              <Link key={href} href={href} className={`flex items-center gap-3 px-4 py-3 text-sm ${isActive(pathname, href) ? "text-primary" : "text-foreground hover:bg-white/5"}`}>
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            ))}
+            <button type="button" onClick={() => void handleLogout()} className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left text-sm text-muted-foreground hover:bg-white/5">
+              <LogOut className="h-4 w-4" />
+              Se déconnecter
+            </button>
+          </div>
+        </details>
       </nav>
     </>
   );

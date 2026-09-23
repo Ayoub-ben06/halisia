@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -15,7 +16,6 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { sparklinePoints } from "@/lib/sparkline";
 import {
   halalStatusBadgeClass,
   halalStatusLabel,
@@ -312,10 +312,10 @@ function WatchlistCard({
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1a1c1a] text-xs font-bold">
             {initials}
           </span>
-          <div className="min-w-0">
+          <Link href={`/asset/${encodeURIComponent(item.ticker)}`} className="min-w-0 hover:text-[#e6c364]">
             <p className="truncate font-bold">{item.name}</p>
             <p className="text-xs text-[#8f8878]">{item.ticker}</p>
-          </div>
+          </Link>
         </div>
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${halalStatusBadgeClass(item.halalStatus)}`}
@@ -346,8 +346,8 @@ function WatchlistCard({
             </p>
           )}
         </div>
-        {item.price != null && (
-          <Sparkline points={item.sparkline} positive={positive} />
+        {item.sparkline.length > 1 && (
+          <Sparkline points={item.sparkline} positive={item.sparkline[item.sparkline.length - 1] >= item.sparkline[0]} />
         )}
       </div>
 

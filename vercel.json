@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/send-daily-summary", "schedule": "30 16 * * 1-5" },
+    { "path": "/api/process-notifications", "schedule": "0 6 * * *" }
+  ]
+}

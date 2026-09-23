@@ -1,28 +1,27 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  AlertTriangle,
   BarChart3,
-  CheckCircle2,
   ChevronRight,
   Coins,
   Gauge,
   Gem,
   Landmark,
-  SearchCheck,
   ShieldCheck,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { PortfolioToolbar } from "@/components/dashboard/portfolio-toolbar";
+import { DashboardAlerts } from "@/components/dashboard/dashboard-alerts";
 import { createClient } from "@/lib/supabase/server";
 import { fetchYahooPrices } from "@/lib/yahoo-prices";
 import { getLivePrices } from "@/lib/live-prices";
+import { assetHalalStatus, getTickerScreenings } from "@/lib/halal-screening";
+import type { HalalStatus } from "@/lib/halal-status";
+import { getUserNotifications } from "@/lib/notifications";
+import { displaySettings } from "@/lib/user-preferences";
+import { moneyFormatter } from "@/lib/money";
 
-const eur = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-});
 const pct = new Intl.NumberFormat("fr-FR", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -30,11 +29,19 @@ const pct = new Intl.NumberFormat("fr-FR", {
 
 type PortfolioRow = {
   ticker: string;
+  detailTicker: string | null;
   name: string;
   meta: string;
   value: number;
   performance: number;
-  status: "conforme" | "débat" | "analyse";
+  status: HalalStatus;
+};
+
+const statusLabels: Record<HalalStatus, string> = {
+  compliant: "conforme",
+  debated: "douteux",
+  non_compliant: "non conforme",
+  unknown: "non analysé",
 };
 
 export const dynamic = "force-dynamic";
@@ -46,16 +53,22 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [assetsResult, cryptoResult, goldResult, livePrices] =
+  const [assetsResult, cryptoResult, goldResult, livePrices, notifications, display] =
     await Promise.all([
       supabase.from("assets").select("*").eq("user_id", user.id),
       supabase.from("crypto_assets").select("*").eq("user_id", user.id),
       supabase.from("gold_assets").select("*").eq("user_id", user.id),
       getLivePrices(),
+      getUserNotifications(user.id),
+      displaySettings(user),
     ]);
+  const eur = moneyFormatter(display.currency, display.rate);
   const assets = assetsResult.data ?? [];
   const crypto = cryptoResult.data ?? [];
   const gold = goldResult.data ?? [];
+  const screenings = await getTickerScreenings(
+    assets.filter((asset) => asset.type === "stock" && asset.ticker).map((asset) => asset.ticker!),
+  );
   const yahooPrices = await fetchYahooPrices(
     assets
       .filter((asset) => asset.isin)
@@ -74,17 +87,17 @@ export default async function DashboardPage() {
         (asset.isin ? yahooPrices[asset.isin] : null) ??
         Number(asset.current_price ?? 0);
       const value = Number(asset.quantity) * price;
-      const isIslamicEtf = /ISLAMIC/i.test(asset.name);
       return {
         ticker:
           asset.ticker ??
           asset.name.match(/\(([^)]+)\)$/)?.[1] ??
           asset.type.toUpperCase(),
+        detailTicker: asset.ticker,
         name: asset.name.replace(/\s*\([^)]+\)$/, ""),
-        meta: `${asset.type === "etf" ? "ETF" : "ACTION"} • ${asset.account_type ?? "FORTUNEO"}`,
+        meta: `${asset.type === "etf" ? "ETF" : "ACTION"} • ${asset.account_type ?? asset.broker.toUpperCase()}`,
         value,
         performance: invested ? ((value - invested) / invested) * 100 : 0,
-        status: isIslamicEtf ? ("conforme" as const) : ("analyse" as const),
+        status: assetHalalStatus(asset, screenings),
       };
     }),
     ...crypto.map((asset) => {
@@ -96,11 +109,12 @@ export default async function DashboardPage() {
       const invested = Number(asset.quantity) * Number(asset.average_buy_price);
       return {
         ticker: asset.ticker,
+        detailTicker: `${asset.ticker}-EUR`,
         name: asset.name,
-        meta: "CRYPTO • BITPANDA",
+        meta: `CRYPTO • ${asset.broker.toUpperCase()}`,
         value,
         performance: invested ? ((value - invested) / invested) * 100 : 0,
-        status: "débat" as const,
+        status: "debated" as const,
       };
     }),
     ...gold.map((asset) => {
@@ -110,11 +124,12 @@ export default async function DashboardPage() {
       const invested = Number(asset.quantity_grams) * Number(asset.average_buy_price_per_gram);
       return {
         ticker: asset.ticker,
+        detailTicker: null,
         name: asset.name,
-        meta: "MÉTAL • BITPANDA",
+        meta: `MÉTAL • ${asset.broker.toUpperCase()}`,
         value,
         performance: invested ? ((value - invested) / invested) * 100 : 0,
-        status: "conforme" as const,
+        status: "compliant" as const,
       };
     }),
   ];
@@ -138,12 +153,18 @@ export default async function DashboardPage() {
   const performance = totalInvested
     ? ((totalValue - totalInvested) / totalInvested) * 100
     : 0;
-  const compliantValue = rows
-    .filter((row) => row.status === "conforme")
-    .reduce((sum, row) => sum + row.value, 0);
+  const valueBy = (status: HalalStatus) => rows.filter((row) => row.status === status).reduce((sum, row) => sum + row.value, 0);
+  const compliantValue = valueBy("compliant");
   const complianceScore = totalValue
     ? Math.round((compliantValue / totalValue) * 100)
     : 0;
+  const share = (value: number) => (totalValue ? (value / totalValue) * 100 : 0);
+  const breakdown = [
+    { label: "Conforme", value: compliantValue, color: "bg-green-500" },
+    { label: "Douteux", value: valueBy("debated"), color: "bg-amber-500" },
+    { label: "Non conforme", value: valueBy("non_compliant"), color: "bg-red-500" },
+    { label: "Non analysé", value: valueBy("unknown"), color: "bg-slate-500" },
+  ];
 
   return (
     <>
@@ -168,7 +189,7 @@ export default async function DashboardPage() {
               value={eur.format(totalValue * 0.025)}
               icon={Coins}
               gold
-              footer="Estimation indicative à 2,5 %"
+              footer="2,5 % brut, avant nisab et exclusions — détail dans Zakat"
             />
           </section>
 
@@ -182,27 +203,27 @@ export default async function DashboardPage() {
                       Santé de la conformité
                     </h2>
                     <p className="mt-3 max-w-md text-sm text-[#d0c5b2]">
-                      Vue indicative de la répartition des actifs déjà
-                      identifiés comme conformes.
+                      Part de la valeur du portefeuille par statut AAOIFI.
                     </p>
-                    <div className="mt-7 flex items-end justify-between text-xs font-bold uppercase">
-                      <span>Répartition Halal</span>
-                      <span className="text-[#e6c364]">
-                        {complianceScore} %
-                      </span>
+                    <div className="mt-7 flex h-3 overflow-hidden rounded-full bg-[#333533]">
+                      {breakdown.map((item) => (
+                        <div key={item.label} className={`h-full ${item.color}`} style={{ width: `${share(item.value)}%` }} title={`${item.label} : ${pct.format(share(item.value))} %`} />
+                      ))}
                     </div>
-                    <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#333533]">
-                      <div
-                        className="h-full bg-green-500"
-                        style={{ width: `${complianceScore}%` }}
-                      />
+                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#d0c5b2]">
+                      {breakdown.filter((item) => item.value > 0).map((item) => (
+                        <span key={item.label} className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full ${item.color}`} />
+                          {item.label} {pct.format(share(item.value))} %
+                        </span>
+                      ))}
                     </div>
                   </div>
                   <div className="flex h-36 w-44 flex-col items-center justify-center rounded-t-full border-[12px] border-b-0 border-[#c9a84c] bg-[#1a1c1a]">
                     <span className="text-3xl font-bold">
-                      {complianceScore}
+                      {complianceScore} %
                     </span>
-                    <span className="text-xs text-[#d0c5b2]">Global Score</span>
+                    <span className="text-xs text-[#d0c5b2]">conforme</span>
                   </div>
                 </div>
               </section>
@@ -215,7 +236,7 @@ export default async function DashboardPage() {
                       Cours actualisés automatiquement
                     </p>
                   </div>
-                  <PortfolioToolbar />
+                  <PortfolioToolbar rows={rows.map((row) => ({ ticker: row.ticker, name: row.name, status: statusLabels[row.status], value: row.value, performance: row.performance }))} />
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px]">
@@ -232,13 +253,17 @@ export default async function DashboardPage() {
                         <PortfolioLine
                           key={`${row.ticker}-${row.name}`}
                           row={row}
+                          format={eur.format}
                         />
                       ))}
                     </tbody>
                   </table>
+                  {!rows.length && (
+                    <p className="px-8 py-10 text-center text-sm text-[#8f8878]">Aucun actif pour le moment. Ajoutez votre première position avec le bouton +.</p>
+                  )}
                 </div>
                 <Link
-                  href="/dashboard"
+                  href="/portfolio"
                   className="block p-6 text-center text-xs font-bold hover:text-[#e6c364]"
                 >
                   Voir tous les actifs
@@ -247,27 +272,7 @@ export default async function DashboardPage() {
             </div>
 
             <aside className="space-y-6 lg:col-span-4">
-              <section className="rounded-[2rem] border border-white/[0.05] bg-[#1a1c1a] p-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold">Alertes Actives</h2>
-                  <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold">
-                    2
-                  </span>
-                </div>
-                <Alert
-                  color="amber"
-                  title="Analyse recommandée"
-                  text="Certains actifs n'ont pas encore de statut Shariah validé."
-                />
-                <Alert
-                  color="red"
-                  title="Suivi du Bitcoin"
-                  text="La classification des crypto-actifs reste débattue."
-                />
-                <button className="mt-5 w-full text-xs font-bold text-[#d0c5b2]">
-                  Tout marquer comme lu
-                </button>
-              </section>
+              <DashboardAlerts notifications={notifications} />
               <section className="rounded-[2rem] border border-white/[0.05] bg-[#1a1c1a] p-6">
                 <h2 className="text-lg font-bold">Marchés suivis</h2>
                 <Market
@@ -286,17 +291,6 @@ export default async function DashboardPage() {
                     livePrices.btc_eur ? eur.format(livePrices.btc_eur) : "—"
                   }
                 />
-                <svg
-                  viewBox="0 0 260 60"
-                  className="mt-5 w-full text-[#c9a84c]"
-                >
-                  <path
-                    d="M0 50 C35 38, 55 53, 82 34 S125 18, 148 40 S195 57, 220 15 S245 8,260 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                </svg>
               </section>
               <section className="relative overflow-hidden rounded-[2rem] bg-[#d5b34f] p-7 text-[#111412]">
                 <Sparkles className="absolute -bottom-5 -right-5 h-28 w-28 opacity-20" />
@@ -307,7 +301,7 @@ export default async function DashboardPage() {
                   Obtenez une vision claire de la conformité de vos actifs.
                 </p>
                 <Link
-                  href="/screening"
+                  href="/screening?app=1"
                   className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#111412] px-5 py-3 text-xs font-bold text-white"
                 >
                   Démarrer l&apos;audit <ChevronRight className="h-4 w-4" />
@@ -361,35 +355,40 @@ function Kpi({
   );
 }
 
-function PortfolioLine({ row }: { row: PortfolioRow }) {
+function PortfolioLine({ row, format }: { row: PortfolioRow; format: (value: number) => string }) {
   const statusStyle =
-    row.status === "conforme"
+    row.status === "compliant"
       ? "bg-green-500/10 text-green-500"
-      : row.status === "débat"
+      : row.status === "debated"
         ? "bg-amber-500/10 text-amber-500"
-        : "bg-slate-500/10 text-slate-300";
+        : row.status === "non_compliant"
+          ? "bg-red-500/10 text-red-400"
+          : "bg-slate-500/10 text-slate-300";
+  const identity = (
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-xs font-bold">
+        {row.ticker.slice(0, 4)}
+      </div>
+      <div>
+        <p className="text-sm font-bold">{row.name}</p>
+        <p className="text-[10px] text-[#d0c5b2]">{row.meta}</p>
+      </div>
+    </div>
+  );
   return (
     <tr className="hover:bg-[#282b28]/50">
       <td className="px-8 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-xs font-bold">
-            {row.ticker.slice(0, 4)}
-          </div>
-          <div>
-            <p className="text-sm font-bold">{row.name}</p>
-            <p className="text-[10px] text-[#d0c5b2]">{row.meta}</p>
-          </div>
-        </div>
+        {row.detailTicker ? <Link href={`/asset/${encodeURIComponent(row.detailTicker)}`} className="hover:text-[#e6c364]">{identity}</Link> : identity}
       </td>
       <td className="px-8 py-5">
         <span
           className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${statusStyle}`}
         >
-          {row.status}
+          {statusLabels[row.status]}
         </span>
       </td>
       <td className="px-8 py-5 text-sm font-semibold">
-        {eur.format(row.value)}
+        {format(row.value)}
       </td>
       <td
         className={`px-8 py-5 text-right text-sm font-bold ${row.performance >= 0 ? "text-green-500" : "text-red-500"}`}
@@ -398,32 +397,6 @@ function PortfolioLine({ row }: { row: PortfolioRow }) {
         {pct.format(row.performance)} %
       </td>
     </tr>
-  );
-}
-
-function Alert({
-  color,
-  title,
-  text,
-}: {
-  color: "amber" | "red";
-  title: string;
-  text: string;
-}) {
-  return (
-    <div
-      className={`mt-5 rounded-xl border-l-4 p-4 ${color === "amber" ? "border-amber-500 bg-[#282b28]" : "border-red-500 bg-[#282b28]"}`}
-    >
-      <div className="flex items-center gap-2 text-xs font-bold">
-        {color === "amber" ? (
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-        ) : (
-          <SearchCheck className="h-4 w-4 text-red-500" />
-        )}
-        {title}
-      </div>
-      <p className="mt-2 text-xs leading-5 text-[#d0c5b2]">{text}</p>
-    </div>
   );
 }
 

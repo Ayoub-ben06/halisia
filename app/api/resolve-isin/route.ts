@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { tooManyRequests } from "@/lib/rate-limit";
 
 type OpenFigiInstrument = {
   ticker?: string;
@@ -11,6 +12,8 @@ type OpenFigiResult = {
 };
 
 export async function POST(request: Request) {
+  const limited = tooManyRequests(request, "resolve-isin", 30, 60_000);
+  if (limited) return limited;
   const { isin } = (await request.json()) as { isin?: string };
   const normalizedIsin = isin?.trim().toUpperCase();
 

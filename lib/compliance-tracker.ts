@@ -4,6 +4,7 @@ import { getFinancialData } from "@/lib/aaoifi/data-provider";
 import { runAAOIFI } from "@/lib/aaoifi/engine";
 import type { ScreeningStatus } from "@/lib/aaoifi/types";
 import { emailForUser, emailShell, escapeHtml, type RunResult } from "@/lib/event-notifications";
+import { writeCache } from "@/lib/halal-screening";
 import { DAILY_SUMMARY_FROM, getResend } from "@/lib/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types";
@@ -14,7 +15,7 @@ type Holding = { user_id: string; ticker: string; isin: string | null; name: str
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const DAY_MS = 86_400_000;
 const RESCREEN_AFTER_MS = 20 * 60 * 60 * 1000;
-const DEFAULT_BATCH_SIZE = 8;
+const DEFAULT_TIME_BUDGET_MS = 40_000;
 // REVIEW_REQUIRED is shown as "douteux" in the app, so it is tracked like DOUBTFUL.
 const TRACKED_PREVIOUS_STATUSES = new Set<string>(["COMPLIANT", "DOUBTFUL", "REVIEW_REQUIRED"]);
 const RESTORED_STATUSES = new Set<string>(["COMPLIANT", "DOUBTFUL"]);
@@ -117,11 +118,15 @@ async function resolveComplianceChanges(filter: { ticker: string; userId?: strin
  * Re-screens a batch of held tickers (oldest first) and opens a 90-day
  * compliance case for every holder when a ticker becomes NON_COMPLIANT.
  */
-export async function processComplianceScreening(now = new Date(), batchSize = DEFAULT_BATCH_SIZE): Promise<RunResult> {
+export async function processComplianceScreening(now = new Date(), timeBudgetMs = DEFAULT_TIME_BUDGET_MS): Promise<RunResult> {
+  const deadline = Date.now() + timeBudgetMs;
   const admin = createAdminClient();
   const result: RunResult = { sent: 0, skipped: 0, failed: [] };
   const holdings = await loadStockHoldings();
-  const tickers = Array.from(new Set(holdings.map((holding) => holding.ticker)));
+  // Watchlist tickers are refreshed too so the watchlist shows current
+  // statuses; compliance cases are only opened for actual holders.
+  const { data: watched } = await admin.from("watchlist").select("ticker");
+  const tickers = Array.from(new Set([...holdings.map((holding) => holding.ticker), ...(watched ?? []).map((row) => normalizeTicker(row.ticker))]));
   if (!tickers.length) return result;
 
   const { data: cacheRows, error: cacheError } = await admin.from("screening_cache").select("*").in("ticker", tickers);
@@ -132,24 +137,20 @@ export async function processComplianceScreening(now = new Date(), batchSize = D
       const row = cache.get(ticker);
       return !row || now.getTime() - new Date(row.screened_at).getTime() > RESCREEN_AFTER_MS;
     })
-    .sort((a, b) => (cache.get(a)?.screened_at ?? "").localeCompare(cache.get(b)?.screened_at ?? ""))
-    .slice(0, batchSize);
+    .sort((a, b) => (cache.get(a)?.screened_at ?? "").localeCompare(cache.get(b)?.screened_at ?? ""));
 
+  // Oldest screenings first, until the time budget of the cron run is spent;
+  // the remaining tickers are picked up by the next run.
   for (const ticker of due) {
+    if (Date.now() > deadline) {
+      result.skipped += 1;
+      continue;
+    }
     const cached = cache.get(ticker);
     try {
       const screening = runAAOIFI(await getFinancialData(ticker));
       const previousStatus = cached?.status ?? null;
-      const { error: upsertError } = await admin.from("screening_cache").upsert({
-        ticker,
-        status: screening.status,
-        previous_status: previousStatus,
-        purification_ratio: screening.purificationRatio ?? null,
-        reason: screening.reason ?? null,
-        error: null,
-        screened_at: now.toISOString(),
-      });
-      if (upsertError) throw new Error(upsertError.message);
+      await writeCache(ticker, screening, previousStatus, now.toISOString());
 
       if (screening.status === "NON_COMPLIANT" && previousStatus && TRACKED_PREVIOUS_STATUSES.has(previousStatus)) {
         await openComplianceChanges(ticker, previousStatus, screening.status, holdings.filter((holding) => holding.ticker === ticker), now, result);

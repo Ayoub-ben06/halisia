@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { fetchYahooPrices, type YahooPriceAsset } from "@/lib/yahoo-prices";
+import { tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const limited = tooManyRequests(request, "prices", 120, 60_000);
+  if (limited) return limited;
   try {
     const body = (await request.json()) as {
       assets?: YahooPriceAsset[];

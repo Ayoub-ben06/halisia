@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BellRing, Coins, Globe2, SearchCheck, WalletCards } from "lucide-react";
 import { PublicNavbar } from "@/components/layout/PublicNavbar";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
-const investors = [
-  { initials: "MK", colors: "from-[#c9a84c] via-[#4d4837] to-[#171d1d]" },
-  { initials: "SA", colors: "from-[#765335] via-[#273237] to-[#111719]" },
-  { initials: "LN", colors: "from-[#c19867] via-[#344744] to-[#121819]" },
-  { initials: "YM", colors: "from-[#354e75] via-[#1b2c46] to-[#101719]" },
+const features = [
+  { icon: SearchCheck, title: "Screening AAOIFI documenté", text: "Activité, dette, placements portant intérêt et revenus impurs, avec la source et la période de chaque ratio." },
+  { icon: Globe2, title: "15 marchés couverts", text: "Actions américaines via les rapports SEC, et Europe, Japon, Inde, Golfe, Canada, Australie ou Hong Kong via Yahoo Finance." },
+  { icon: WalletCards, title: "Portefeuille centralisé", text: "Actions, ETF, crypto et or au même endroit, avec import CSV Fortuneo, Bitpanda, Degiro et Trade Republic." },
+  { icon: Coins, title: "Zakat et purification", text: "Calcul de la Zakat au nisab or ou argent du jour, et purification des dividendes ligne par ligne." },
+  { icon: BellRing, title: "Alertes de déclassement", text: "Email dès qu’une action détenue devient non conforme, avec le suivi de la règle des 90 jours." },
 ];
 
 export default function HomePage() {
@@ -32,7 +34,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-[900px] flex-col items-center">
           <div className="mb-[33px] inline-flex h-[30px] items-center gap-2 rounded-full border border-white/[0.13] bg-white/[0.045] px-4 text-[12px] tracking-[0.035em] text-[#d2c7b4]">
             <span className="h-2 w-2 rounded-full bg-[#baa052]" />
-            La référence du patrimoine éthique
+            Screening halal · Zakat · Purification
           </div>
 
           <h1 className="max-w-[850px] text-[45px] font-bold leading-[1.07] tracking-[-0.035em] text-[#f7f7f7] sm:text-[58px] lg:text-[68px]">
@@ -55,52 +57,42 @@ export default function HomePage() {
               <ArrowRight className="h-[18px] w-[18px] transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
-              href="/dashboard"
-              className="flex h-[52px] w-full max-w-[183px] items-center justify-center rounded-full border border-white/[0.12] text-[13px] font-semibold text-[#f4f4f2] transition-colors hover:border-white/25 hover:bg-white/[0.04]"
+              href="/screening"
+              className="flex h-[52px] w-full max-w-[220px] items-center justify-center rounded-full border border-white/[0.12] text-[13px] font-semibold text-[#f4f4f2] transition-colors hover:border-white/25 hover:bg-white/[0.04]"
             >
-              Explorer la démo
+              Tester le screener gratuit
             </Link>
           </div>
 
-          <div className="mt-[64px] flex flex-col items-center">
-            <div
-              className="flex -space-x-2.5"
-              aria-label="Communauté d’investisseurs"
-            >
-              {investors.map((investor) => (
-                <div
-                  key={investor.initials}
-                  className="grid h-[44px] w-[44px] place-items-center rounded-full border-[3px] border-[#101719] bg-[#1a2221] p-[2px] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
-                >
-                  <span
-                    className={`grid h-full w-full place-items-center rounded-full bg-gradient-to-br ${investor.colors} text-[9px] font-bold text-white/80`}
-                  >
-                    {investor.initials}
-                  </span>
-                </div>
-              ))}
-              <div className="grid h-[44px] w-[44px] place-items-center rounded-full border-[2px] border-[#0d1213] bg-[#202524] text-[13px] font-medium text-[#e1e0da] shadow-[0_0_0_1px_rgba(255,255,255,0.08)]">
-                +2k
-              </div>
-            </div>
-
-            <div className="mt-[15px] flex flex-wrap items-center justify-center gap-2 text-[12.5px] text-[#c8c0b0]">
-              <span
-                className="inline-block text-[22px] leading-none tracking-[-2px] text-[#f2ca6e]"
-                aria-label="4,9 étoiles sur 5"
-              >
-                ★★★★★
-              </span>
-              <span>
-                <strong className="font-semibold text-[#f3f2ed]">4.9/5</strong>{" "}
-                par plus de 2000 investisseurs
-              </span>
-            </div>
-          </div>
+          <p className="mt-[48px] text-[12.5px] text-[#a9a291]">
+            Gratuit pendant la phase de lancement · Aucune carte bancaire demandée
+          </p>
         </div>
 
         <div className="absolute inset-x-6 bottom-[96px] h-px bg-gradient-to-r from-transparent via-[#796934]/80 to-transparent sm:inset-x-16" />
       </section>
+
+      <section id="fonctionnalites" className="mx-auto max-w-[1180px] scroll-mt-24 px-6 pb-24 sm:px-10">
+        <div className="text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9a84c]">Fonctionnalités</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-[-0.02em]">Tout pour investir selon vos principes</h2>
+        </div>
+        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map(({ icon: Icon, title, text }) => (
+            <article key={title} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#c9a84c]/10 text-[#e6c364]"><Icon className="h-5 w-5" /></span>
+              <h3 className="mt-5 text-base font-bold">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#c9c0af]">{text}</p>
+            </article>
+          ))}
+          <article className="flex flex-col justify-center rounded-2xl border border-[#c9a84c]/25 bg-[#c9a84c]/[0.06] p-6">
+            <h3 className="text-base font-bold">Une méthode transparente</h3>
+            <p className="mt-2 text-sm leading-6 text-[#c9c0af]">Seuils, sources de données et limites de l’analyse sont publics.</p>
+            <Link href="/methodologie" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#f2ca6e] hover:underline">Lire la méthodologie <ArrowRight className="h-4 w-4" /></Link>
+          </article>
+        </div>
+      </section>
+      <SiteFooter />
     </main>
   );
 }

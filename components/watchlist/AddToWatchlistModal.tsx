@@ -15,9 +15,8 @@ import { createClient } from "@/lib/supabase/client";
 import {
   halalStatusBadgeClass,
   halalStatusLabel,
-  resolveHalalStatus,
-  type HalalStatus,
 } from "@/lib/halal-status";
+import { useHalalStatus } from "@/lib/use-halal-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -104,9 +103,7 @@ export function AddToWatchlistModal({
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [toast, setToast] = useState("");
 
-  const halalStatus: HalalStatus | null = selected
-    ? resolveHalalStatus(selected.ticker, selected.name)
-    : null;
+  const { status: halalStatus, loading: halalStatusLoading } = useHalalStatus(selected);
 
   useEffect(() => {
     if (!toast) return;
@@ -330,7 +327,6 @@ export function AddToWatchlistModal({
                     </p>
                   ) : results.length ? (
                     results.map((result) => {
-                      const status = resolveHalalStatus(result.ticker, result.name);
                       return (
                         <button
                           key={`${result.ticker}-${result.exchange}`}
@@ -347,11 +343,6 @@ export function AddToWatchlistModal({
                               {result.exchange}
                             </span>
                           )}
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${halalStatusBadgeClass(status)}`}
-                          >
-                            {halalStatusLabel(status)}
-                          </span>
                         </button>
                       );
                     })
@@ -377,6 +368,11 @@ export function AddToWatchlistModal({
                           {selected.exchange ? ` • ${selected.exchange}` : ""}
                         </p>
                       </div>
+                      {halalStatusLoading && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-bold uppercase text-[rgba(255,255,255,0.6)]">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Analyse…
+                        </span>
+                      )}
                       {halalStatus && (
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${halalStatusBadgeClass(halalStatus)}`}

@@ -6,6 +6,7 @@ export type LivePrices = {
   btc_eur: number | null;
   btc_change_percent: number | null;
   gold_eur_per_gram: number | null;
+  silver_eur_per_gram: number | null;
   timestamp: string;
   errors: {
     bitcoin?: string;
@@ -58,16 +59,22 @@ export async function getLivePrices(): Promise<LivePrices> {
     btc_eur: null,
     btc_change_percent: null,
     gold_eur_per_gram: null,
+    silver_eur_per_gram: null,
     timestamp: new Date().toISOString(),
     errors: {},
     sources: { bitcoin: null, gold: null },
   };
 
-  const [bitcoinResult, goldResult, exchangeRateResult] = await Promise.allSettled([
+  const [bitcoinResult, goldResult, exchangeRateResult, silverResult] = await Promise.allSettled([
     fetchJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur&precision=full&include_24hr_change=true"),
     fetchJson("https://metals.live/api/spot/gold"),
     fetchUsdPerEur(),
+    fetchJson("https://api.gold-api.com/price/XAG"),
   ]);
+  const silverUsd = silverResult.status === "fulfilled" ? goldUsdPerOunce(silverResult.value) : null;
+  if (silverUsd !== null && exchangeRateResult.status === "fulfilled") {
+    result.silver_eur_per_gram = silverUsd / exchangeRateResult.value / TROY_OUNCE_IN_GRAMS;
+  }
 
   if (bitcoinResult.status === "fulfilled") {
     const price = Number(

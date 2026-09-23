@@ -18,7 +18,22 @@ const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 const MAX_FACT_AGE_DAYS = 400;
 const DEBT_TAG_PATTERN = /^(LongTermDebt|DebtCurrent|DebtNoncurrent|ShortTermBorrowings|CommercialPaper|NotesPayable|SeniorNotes|ConvertibleNotesPayable|SecuredDebt|UnsecuredDebt|LinesOfCredit|DebtInstrumentCarryingAmount)/;
 
-async function get<T>(url: string): Promise<T> { try { const response = await fetch(url, { headers, cache: "no-store" }); if (!response.ok) throw new Error(`SEC HTTP ${response.status}`); return response.json() as Promise<T>; } catch (error) { throw new Error(`SEC request failed (${url}): ${error instanceof Error ? error.message : String(error)}`); } }
+// SEC data changes at most daily; responses are kept in memory (bounded, as
+// companyfacts payloads weigh several MB) and concurrent requests are shared.
+const SEC_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const SEC_CACHE_MAX_ENTRIES = 40;
+const secCache = new Map<string, { expiresAt: number; value: Promise<unknown> }>();
+function get<T>(url: string): Promise<T> {
+  const now = Date.now();
+  const hit = secCache.get(url);
+  if (hit && hit.expiresAt > now) return hit.value as Promise<T>;
+  const value = fetchJson<T>(url);
+  secCache.set(url, { expiresAt: now + SEC_CACHE_TTL_MS, value });
+  value.catch(() => secCache.delete(url));
+  while (secCache.size > SEC_CACHE_MAX_ENTRIES) secCache.delete(secCache.keys().next().value!);
+  return value;
+}
+async function fetchJson<T>(url: string): Promise<T> { try { const response = await fetch(url, { headers, cache: "no-store" }); if (!response.ok) throw new Error(`SEC HTTP ${response.status}`); return response.json() as Promise<T>; } catch (error) { throw new Error(`SEC request failed (${url}): ${error instanceof Error ? error.message : String(error)}`); } }
 async function getText(url: string): Promise<string> { try { const response = await fetch(url, { headers, cache: "no-store" }); if (!response.ok) throw new Error(`SEC document HTTP ${response.status}`); return response.text(); } catch (error) { throw new Error(`SEC document request failed (${url}): ${error instanceof Error ? error.message : String(error)}`); } }
 function normalized(value: string) { return value.toLowerCase().replace(/[^a-z0-9]/g, ""); }
 function amountFromText(value: string, unit?: string) { const amount = Number(value.replace(/,/g, "")); if (!Number.isFinite(amount)) return undefined; const multiplier = unit?.toLowerCase() === "billion" ? 1_000_000_000 : unit?.toLowerCase() === "million" ? 1_000_000 : unit?.toLowerCase() === "thousand" ? 1_000 : 1; return amount * multiplier; }

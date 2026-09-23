@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
+import { tooManyRequests } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,8 @@ function cleanQuotes(quotes: YahooQuote[]) {
 }
 
 export async function GET(request: NextRequest) {
+  const limited = tooManyRequests(request, "search-assets", 120, 60_000);
+  if (limited) return limited;
   const query = request.nextUrl.searchParams.get("q")?.trim();
   if (!query) return NextResponse.json([]);
 

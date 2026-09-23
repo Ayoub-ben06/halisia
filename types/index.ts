@@ -23,6 +23,7 @@ export type Database = {
           purchase_date: string | null;
           halal_status: "compliant" | "non_compliant" | "debated" | "unknown";
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -184,6 +185,7 @@ export type Database = {
           purification_ratio: number | null;
           reason: string | null;
           error: string | null;
+          result: unknown | null;
           screened_at: string;
         };
         Insert: {
@@ -193,9 +195,68 @@ export type Database = {
           purification_ratio?: number | null;
           reason?: string | null;
           error?: string | null;
+          result?: unknown | null;
           screened_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["screening_cache"]["Insert"]>;
+        Relationships: [];
+      };
+      transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          transaction_id: string;
+          asset_name: string;
+          asset_ticker: string;
+          asset_class: "stock" | "etf" | "crypto" | "gold" | "cash";
+          side: "buy" | "sell";
+          account_type: string | null;
+          transaction_date: string;
+          quantity: number;
+          price_eur: number;
+          amount_eur: number;
+          fee_eur: number;
+          broker: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          transaction_id?: string;
+          asset_name: string;
+          asset_ticker: string;
+          asset_class: "stock" | "etf" | "crypto" | "gold" | "cash";
+          side?: "buy" | "sell";
+          account_type?: string | null;
+          transaction_date: string;
+          quantity: number;
+          price_eur: number;
+          amount_eur: number;
+          fee_eur?: number;
+          broker?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["transactions"]["Insert"]>;
+        Relationships: [];
+      };
+      zakat_payments: {
+        Row: {
+          id: string;
+          user_id: string;
+          paid_at: string;
+          amount: number;
+          currency: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          paid_at?: string;
+          amount: number;
+          currency?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["zakat_payments"]["Insert"]>;
         Relationships: [];
       };
       compliance_changes: {

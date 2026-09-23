@@ -1,8 +1,9 @@
 "use client";
 
-import { Bell, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { AssetSearch } from "@/components/dashboard/asset-search";
+import { NotificationBell } from "@/components/dashboard/notification-bell";
+import type { AppNotification } from "@/lib/notifications";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Tableau de Bord",
@@ -17,10 +18,11 @@ const pageTitles: Record<string, string> = {
 
 function getPageTitle(pathname: string) {
   if (pathname.startsWith("/asset/")) return "Détail de l’actif";
+  if (pathname.startsWith("/settings")) return pageTitles["/settings"];
   return pageTitles[pathname] ?? "Halisia";
 }
 
-export function Topbar() {
+export function Topbar({ notifications = [] }: { notifications?: AppNotification[] }) {
   const pathname = usePathname();
 
   return (
@@ -30,18 +32,7 @@ export function Topbar() {
       </h1>
       <div className="ml-auto flex w-full max-w-xl items-center gap-3">
         <AssetSearch variant="v1" />
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1a1c1a]"
-        >
-          <Bell className="h-5 w-5 text-[#d0c5b2]" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#c9a84c]" />
-        </button>
-      </div>
-      <div className="hidden items-center gap-2 rounded-full border border-[#c9a84c]/20 bg-[#c9a84c]/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-[#e6c364] xl:flex">
-        <ShieldCheck className="h-4 w-4" />
-        Compte certifié
+        <NotificationBell notifications={notifications} />
       </div>
     </header>
   );

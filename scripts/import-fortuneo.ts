@@ -34,7 +34,8 @@ type PortfolioFile = {
   accountType: AccountType;
 };
 
-const USER_ID = "68c82e2f-56df-4dac-88ed-32f8a3e2637b";
+const USER_ID = process.env.IMPORT_USER_ID ?? "";
+if (!USER_ID) throw new Error("Définissez IMPORT_USER_ID (identifiant Supabase de l’utilisateur cible) avant de lancer l’import.");
 
 const portfolioFiles: PortfolioFile[] = [
   {

@@ -1,27 +1,42 @@
 "use client";
 
+import Link from "next/link";
 import {
   CircleCheck,
+  CircleHelp,
   CircleX,
   Download,
   Eye,
+  HandCoins,
+  Pencil,
   Plus,
   ShieldAlert,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { AddAssetModal } from "@/components/dashboard/add-asset-modal";
+import {
+  PositionActionsDialog,
+  type PositionAction,
+  type PositionActionTarget,
+} from "@/components/dashboard/position-actions-dialog";
+import type { AssetClass, PositionSource } from "@/lib/portfolio-mutations";
+import { moneyFormatter } from "@/lib/money";
 
 export type PortfolioRow = {
   id: string;
+  source: PositionSource;
   ticker: string;
+  /** Yahoo symbol of the detail page, when one exists. */
+  detailTicker: string | null;
   name: string;
   type: "Action" | "ETF" | "Crypto" | "Or";
   account: string;
   quantity: number;
   averagePrice: number;
   currentPrice: number;
-  status: "compliant" | "debated" | "non_compliant";
+  status: "compliant" | "debated" | "non_compliant" | "unknown";
   /** Amount to purify from estimated dividends; null when unknown. */
   purification: number | null;
   purificationRatio?: number | null;
@@ -30,11 +45,6 @@ export type PortfolioRow = {
 };
 type AssetFilter = "Tous" | "PEA" | "CTO" | "Crypto" | "Or";
 type StatusFilter = "Tous" | PortfolioRow["status"];
-const money = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  minimumFractionDigits: 2,
-});
 const number = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 8 });
 const typeStyles = {
   Action: "border-blue-500/50 bg-blue-500/10 text-blue-300",
@@ -43,10 +53,18 @@ const typeStyles = {
   Or: "border-yellow-600/50 bg-yellow-600/10 text-yellow-400",
 };
 
-export function PortfolioView({ rows }: { rows: PortfolioRow[] }) {
+export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }: { rows: PortfolioRow[]; displayCurrency?: string; displayRate?: number }) {
+  const money = useMemo(() => moneyFormatter(displayCurrency, displayRate), [displayCurrency, displayRate]);
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("Tous");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Tous");
   const [modalOpen, setModalOpen] = useState(false);
+  const [actionTarget, setActionTarget] = useState<PositionActionTarget | null>(null);
+  const [action, setAction] = useState<PositionAction | null>(null);
+  const openAction = (row: PortfolioRow, next: PositionAction) => {
+    const assetClass: AssetClass = row.type === "ETF" ? "etf" : row.type === "Crypto" ? "crypto" : row.type === "Or" ? "gold" : "stock";
+    setActionTarget({ id: row.id, source: row.source, name: row.name, ticker: row.ticker, assetClass, account: row.account, quantity: row.quantity, averagePrice: row.averagePrice, currentPrice: row.currentPrice, unit: row.type === "Or" ? " g" : undefined });
+    setAction(next);
+  };
   const filtered = rows.filter(
     (row) =>
       (assetFilter === "Tous" ||
@@ -119,7 +137,6 @@ export function PortfolioView({ rows }: { rows: PortfolioRow[] }) {
         <Metric
           label="Valeur actuelle"
           value={money.format(totals.current)}
-          note="+2,4% ce mois"
         />
         <Metric
           label="Plus-value globale"
@@ -172,6 +189,14 @@ export function PortfolioView({ rows }: { rows: PortfolioRow[] }) {
           >
             <CircleX className="h-3.5 w-3.5 text-halal-nonCompliant" /> Non conforme
           </FilterButton>
+          {rows.some((row) => row.status === "unknown") && (
+            <FilterButton
+              active={statusFilter === "unknown"}
+              onClick={() => setStatusFilter("unknown")}
+            >
+              <CircleHelp className="h-3.5 w-3.5 text-[rgba(255,255,255,0.6)]" /> Non analysé
+            </FilterButton>
+          )}
         </div>
       </div>
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.05] bg-[#1a1c1a]">
@@ -272,14 +297,23 @@ export function PortfolioView({ rows }: { rows: PortfolioRow[] }) {
                           ? "Aucune"
                           : money.format(row.purification)}
                     </td>
-                    <td className="px-4 py-4 text-center">
-                      <button
-                        type="button"
-                        aria-label={`Voir ${row.name}`}
-                        className="text-[rgba(255,255,255,0.6)] hover:text-[#e6c364]"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center justify-center gap-2 text-[rgba(255,255,255,0.6)]">
+                        {row.detailTicker && (
+                          <Link href={`/asset/${encodeURIComponent(row.detailTicker)}`} aria-label={`Voir ${row.name}`} title="Voir la fiche" className="rounded p-1 hover:text-[#e6c364]">
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        )}
+                        <button type="button" onClick={() => openAction(row, "edit")} aria-label={`Modifier ${row.name}`} title="Modifier" className="rounded p-1 hover:text-[#e6c364]">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => openAction(row, "sell")} aria-label={`Vendre ${row.name}`} title="Enregistrer une vente" className="rounded p-1 hover:text-[#e6c364]">
+                          <HandCoins className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => openAction(row, "delete")} aria-label={`Supprimer ${row.name}`} title="Supprimer" className="rounded p-1 hover:text-halal-nonCompliant">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -313,6 +347,7 @@ export function PortfolioView({ rows }: { rows: PortfolioRow[] }) {
         {filtered.length > 1 ? "s" : ""}
       </p>
       <AddAssetModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <PositionActionsDialog target={actionTarget} action={action} onClose={() => { setAction(null); setActionTarget(null); }} />
     </div>
   );
 }
@@ -408,6 +443,13 @@ function StatusIcon({ status }: { status: PortfolioRow["status"] }) {
       <TriangleAlert
         aria-label="Douteux"
         className="mx-auto h-4 w-4 text-halal-debated"
+      />
+    );
+  if (status === "unknown")
+    return (
+      <CircleHelp
+        aria-label="Non analysé"
+        className="mx-auto h-4 w-4 text-[rgba(255,255,255,0.5)]"
       />
     );
   return (

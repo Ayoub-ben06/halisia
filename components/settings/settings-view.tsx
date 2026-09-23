@@ -125,7 +125,10 @@ export function SettingsView({
               <button
                 key={id}
                 type="button"
-                onClick={() => setSection(id)}
+                onClick={() => {
+                  setSection(id);
+                  window.history.replaceState(null, "", `/settings/${id}`);
+                }}
                 aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl border-l-2 px-4 py-3 text-sm font-semibold transition-colors ${
                   active
@@ -278,7 +281,7 @@ function ProfileSection({
           <div className="min-w-0">
             <p className="text-lg font-bold">{displayName}</p>
             <p className="mt-1 text-sm text-[#a9a291]">
-              Photo de profil du compte Halisia Private
+              Photo de profil du compte Halisia
             </p>
             <input
               ref={fileInput}
@@ -539,84 +542,54 @@ function DeleteAccountDialog({
 /* --------------------------------------------------------- Abonnement -- */
 
 const planFeatures = [
-  "Screening Shariah illimité",
-  "Calcul Zakat & purification automatisé",
+  "Screening Shariah des actions de 15 marchés",
+  "Calcul de la Zakat et purification des dividendes",
   "Watchlist et alertes de conformité",
   "Historique et export du portefeuille",
 ];
 
 function SubscriptionSection() {
   return (
-    <>
-      <Panel>
-        <PanelHeader
-          title="Votre abonnement"
-          description="Consultez votre formule et gérez votre facturation."
-        />
-        <div className="rounded-xl border border-[#9a8035]/40 bg-[#c9a84c]/[0.07] p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#c9a84c]/10 px-3 py-1 text-xs font-semibold text-[#e6c364]">
-                <Sparkles className="h-3.5 w-3.5" />
-                Formule active
-              </span>
-              <p className="mt-3 text-2xl font-bold text-[#e6c364]">
-                Halisia Private
-              </p>
-              <p className="mt-1 text-sm text-[#a9a291]">
-                Facturation annuelle • Renouvellement automatique
-              </p>
-            </div>
-            <p className="text-right">
-              <span className="text-3xl font-bold">149 €</span>
-              <span className="block text-sm text-[#a9a291]">par an</span>
+    <Panel>
+      <PanelHeader
+        title="Votre formule"
+        description="Halisia est gratuit pendant la phase de lancement."
+      />
+      <div className="rounded-xl border border-[#9a8035]/40 bg-[#c9a84c]/[0.07] p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#c9a84c]/10 px-3 py-1 text-xs font-semibold text-[#e6c364]">
+              <Sparkles className="h-3.5 w-3.5" />
+              Formule active
+            </span>
+            <p className="mt-3 text-2xl font-bold text-[#e6c364]">
+              Accès lancement
+            </p>
+            <p className="mt-1 text-sm text-[#a9a291]">
+              Toutes les fonctionnalités incluses • Aucun moyen de paiement enregistré
             </p>
           </div>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-            {planFeatures.map((feature) => (
-              <li
-                key={feature}
-                className="flex items-center gap-2 text-sm text-[#a9a291]"
-              >
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-halal-compliant" />
-                {feature}
-              </li>
-            ))}
-          </ul>
+          <p className="text-right">
+            <span className="text-3xl font-bold">0 €</span>
+          </p>
         </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="button" size="lg" className="font-bold">
-            Gérer ma facturation
-          </Button>
-          <button
-            type="button"
-            className="inline-flex h-11 items-center justify-center rounded-lg border border-[#344038] px-5 text-sm font-semibold text-[#a9a291] hover:bg-white/5"
-          >
-            Résilier l’abonnement
-          </button>
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelHeader
-          title="Moyen de paiement"
-          description="La carte utilisée pour le renouvellement de votre formule."
-        />
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/[0.05] bg-[#151b18] p-5">
-          <span className="flex items-center gap-3 text-sm">
-            <CreditCard className="h-5 w-5 text-[#c9a84c]" />
-            Visa •••• 4242
-            <span className="text-[#a9a291]">— expire 09/2027</span>
-          </span>
-          <button
-            type="button"
-            className="text-sm font-semibold text-[#e6c364] hover:underline"
-          >
-            Modifier
-          </button>
-        </div>
-      </Panel>
-    </>
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+          {planFeatures.map((feature) => (
+            <li
+              key={feature}
+              className="flex items-center gap-2 text-sm text-[#a9a291]"
+            >
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-halal-compliant" />
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="mt-6 text-sm leading-6 text-[#a9a291]">
+        L’offre Premium ouvrira prochainement. Vous serez prévenu à l’avance et aucune somme ne sera prélevée sans votre accord.{" "}
+        <Link href="/tarifs" className="font-semibold text-[#e6c364] hover:underline">Voir les tarifs prévus</Link>
+      </p>
+    </Panel>
   );
 }
 
@@ -924,7 +897,7 @@ function SecuritySection({
       <Panel>
         <PanelHeader
           title="Session et accès"
-          description="Contrôlez l’accès à votre compte Halisia Private."
+          description="Contrôlez l’accès à votre compte Halisia."
         />
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/[0.05] bg-[#151b18] p-5">
@@ -944,34 +917,133 @@ function SecuritySection({
               Se déconnecter
             </button>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/[0.05] bg-[#151b18] p-5">
-            <span className="flex items-center gap-3 text-sm">
-              <ShieldCheck className="h-5 w-5 text-halal-compliant" />
-              Authentification à deux facteurs
-              <span className="text-[#a9a291]">— bientôt disponible</span>
-            </span>
-          </div>
+          <TwoFactorSetup onSuccess={onSuccess} onError={onError} />
         </div>
       </Panel>
     </>
   );
 }
 
+function TwoFactorSetup({
+  onSuccess,
+  onError,
+}: {
+  onSuccess: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [enrollment, setEnrollment] = useState<{ id: string; qrCode: string; secret: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    void createClient().auth.mfa.listFactors().then(({ data }) => {
+      setFactorId(data?.totp.find((factor) => factor.status === "verified")?.id ?? null);
+      setLoaded(true);
+    });
+  }, []);
+
+  async function startEnrollment() {
+    setBusy(true);
+    try {
+      const supabase = createClient();
+      // Abandoned enrollments stay as unverified factors and would block a new one.
+      const { data: existing } = await supabase.auth.mfa.listFactors();
+      for (const factor of existing?.all ?? []) {
+        if (factor.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: factor.id });
+      }
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `Halisia ${new Date().toISOString().slice(0, 10)}` });
+      if (error || !data) throw error ?? new Error();
+      setEnrollment({ id: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret });
+    } catch {
+      onError("Impossible d’activer la double authentification pour le moment");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmEnrollment() {
+    if (!enrollment) return;
+    setBusy(true);
+    const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId: enrollment.id, code: code.replace(/\s/g, "") });
+    setBusy(false);
+    if (error) return onError("Code invalide, réessayez avec le code actuel");
+    setFactorId(enrollment.id);
+    setEnrollment(null);
+    setCode("");
+    onSuccess("Double authentification activée");
+  }
+
+  async function disable() {
+    if (!factorId) return;
+    setBusy(true);
+    const { error } = await createClient().auth.mfa.unenroll({ factorId });
+    setBusy(false);
+    if (error) return onError("Impossible de désactiver la double authentification");
+    setFactorId(null);
+    onSuccess("Double authentification désactivée");
+  }
+
+  return (
+    <div className="rounded-xl border border-white/[0.05] bg-[#151b18] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <span className="flex items-center gap-3 text-sm">
+          <ShieldCheck className={`h-5 w-5 ${factorId ? "text-halal-compliant" : "text-[#a9a291]"}`} />
+          Authentification à deux facteurs
+          <span className="text-[#a9a291]">— {!loaded ? "…" : factorId ? "activée" : "désactivée"}</span>
+        </span>
+        {loaded && !enrollment && (
+          factorId ? (
+            <button type="button" disabled={busy} onClick={() => void disable()} className="inline-flex h-10 items-center justify-center rounded-lg border border-[#344038] px-4 text-sm font-semibold text-[#a9a291] hover:bg-white/5 disabled:opacity-60">
+              Désactiver
+            </button>
+          ) : (
+            <Button type="button" disabled={busy} onClick={() => void startEnrollment()} className="h-10 font-bold">
+              Activer
+            </Button>
+          )
+        )}
+      </div>
+      {enrollment && (
+        <div className="mt-5 grid gap-5 border-t border-white/[0.05] pt-5 sm:grid-cols-[180px_1fr]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- Supabase returns the QR code as an SVG data URL */}
+          <img src={enrollment.qrCode} alt="QR code à scanner avec votre application d’authentification" className="h-44 w-44 rounded-lg bg-white p-2" />
+          <div className="space-y-3 text-sm text-[#a9a291]">
+            <p>Scannez ce QR code avec Google Authenticator, 1Password, Authy ou une application équivalente, puis saisissez le code affiché.</p>
+            <p className="break-all text-xs">Clé manuelle : <code className="text-[#e6c364]">{enrollment.secret}</code></p>
+            <div className="flex flex-wrap gap-3">
+              <FormInput value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" maxLength={7} className="max-w-[160px]" />
+              <Button type="button" disabled={busy || code.replace(/\s/g, "").length !== 6} onClick={() => void confirmEnrollment()} className="h-12 font-bold">Confirmer</Button>
+              <button type="button" onClick={() => { setEnrollment(null); setCode(""); }} className="text-sm text-[#a9a291] hover:text-white">Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* --------------------------------------------------------- Préférences -- */
 
-const preferenceFields = [
+const preferenceFields: {
+  key: keyof PreferenceSettings;
+  label: string;
+  hint: string;
+  disabled?: boolean;
+  options: { value: string; label: string }[];
+}[] = [
   {
-    key: "language" as const,
+    key: "language",
     label: "Langue de l’interface",
-    options: [
-      { value: "fr", label: "Français" },
-      { value: "en", label: "English" },
-      { value: "ar", label: "العربية" },
-    ],
+    hint: "Seul le français est disponible pour l’instant.",
+    disabled: true,
+    options: [{ value: "fr", label: "Français" }],
   },
   {
-    key: "currency" as const,
+    key: "currency",
     label: "Devise d’affichage",
+    hint: "Montants convertis au taux du jour dans le tableau de bord, le portefeuille et la Zakat.",
     options: [
       { value: "EUR", label: "Euro (€)" },
       { value: "USD", label: "Dollar US ($)" },
@@ -979,12 +1051,12 @@ const preferenceFields = [
     ],
   },
   {
-    key: "madhhab" as const,
-    label: "Référentiel de screening",
+    key: "madhhab",
+    label: "Nisab de la Zakat",
+    hint: "Le screening des actions suit toujours la norme AAOIFI.",
     options: [
-      { value: "aaoifi", label: "AAOIFI (standard)" },
-      { value: "hanafi", label: "École hanafite" },
-      { value: "shafii", label: "École shafiite" },
+      { value: "aaoifi", label: "Or — 85 g (AAOIFI, majorité des écoles)" },
+      { value: "hanafi", label: "Argent — 595 g (école hanafite)" },
     ],
   },
 ];
@@ -998,6 +1070,7 @@ function PreferencesSection({
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const router = useRouter();
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
 
@@ -1009,6 +1082,7 @@ function PreferencesSection({
       });
       if (error) throw error;
       onSuccess("Préférences enregistrées");
+      router.refresh();
     } catch {
       onError("Impossible d’enregistrer vos préférences");
     } finally {
@@ -1024,16 +1098,17 @@ function PreferencesSection({
       />
       <div className="grid gap-5 sm:grid-cols-2">
         {preferenceFields.map((field) => (
-          <Field key={field.key} label={field.label}>
+          <Field key={field.key} label={field.label} hint={field.hint}>
             <select
-              value={values[field.key]}
+              value={field.key === "language" ? "fr" : values[field.key]}
+              disabled={field.disabled}
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
                   [field.key]: event.target.value,
                 }))
               }
-              className="h-12 w-full appearance-none rounded-lg border border-[#344038] bg-[#151b18] px-4 text-sm outline-none focus:border-[#c9a84c]"
+              className="h-12 w-full appearance-none rounded-lg border border-[#344038] bg-[#151b18] px-4 text-sm outline-none focus:border-[#c9a84c] disabled:opacity-60"
             >
               {field.options.map((option) => (
                 <option key={option.value} value={option.value}>

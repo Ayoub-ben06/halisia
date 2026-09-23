@@ -3,7 +3,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchYahooMarketData } from "@/lib/yahoo-prices";
 import { getLivePrices } from "@/lib/live-prices";
-import { resolveHalalStatus, type HalalStatus } from "@/lib/halal-status";
+import type { HalalStatus } from "@/lib/halal-status";
+import { assetHalalStatus, getTickerScreenings } from "@/lib/halal-screening";
 
 /** Nisab de référence utilisé pour l'estimation, en euros. */
 export const NISAB_EUR = 5950;
@@ -47,15 +48,6 @@ type Position = {
   buyPrice: number;
   halalStatus: HalalStatus;
 };
-
-function normalizeStatus(value: string | null | undefined): HalalStatus | null {
-  return value === "compliant" ||
-    value === "non_compliant" ||
-    value === "debated" ||
-    value === "unknown"
-    ? value
-    : null;
-}
 
 function toPosition(position: Position): DailySummaryAsset & {
   previousValue: number;
@@ -131,6 +123,12 @@ export async function buildDailySummaries(
     getLivePrices(),
   ]);
 
+  // Cache-only (no on-demand analysis) to keep the cron run short; tickers
+  // not screened yet show as "unknown" until the compliance cron runs.
+  const screenings = await getTickerScreenings(
+    assets.filter((asset) => asset.type === "stock" && asset.ticker).map((asset) => asset.ticker!),
+    0,
+  );
   const summaries: DailySummaryData[] = [];
 
   for (const userId of userIds) {
@@ -146,7 +144,6 @@ export async function buildDailySummaries(
       const market = asset.isin ? yahooPrices[asset.isin] : null;
       const referencePrice = buyPrice;
       const yahooPrice = market?.price ?? null;
-      const ticker = asset.ticker ?? asset.isin ?? "";
 
       positions.push({
         name: asset.name,
@@ -156,11 +153,7 @@ export async function buildDailySummaries(
         referencePrice,
         dailyChangePercent: market?.changePercent ?? null,
         buyPrice,
-        halalStatus:
-          normalizeStatus(asset.halal_status) === "unknown" ||
-          normalizeStatus(asset.halal_status) === null
-            ? resolveHalalStatus(ticker, asset.name)
-            : (asset.halal_status as HalalStatus),
+        halalStatus: assetHalalStatus(asset, screenings),
       });
     }
 
@@ -177,9 +170,7 @@ export async function buildDailySummaries(
         referencePrice,
         dailyChangePercent: asset.ticker === "BTC" ? livePrices.btc_change_percent : null,
         buyPrice: Number(asset.average_buy_price),
-        halalStatus:
-          normalizeStatus(asset.halal_status) ??
-          resolveHalalStatus(`${asset.ticker}-EUR`, asset.name),
+        halalStatus: "debated",
       });
     }
 
@@ -194,7 +185,7 @@ export async function buildDailySummaries(
         referencePrice,
         dailyChangePercent: yahooPrices["GC=F"]?.changePercent ?? null,
         buyPrice: Number(asset.average_buy_price_per_gram),
-        halalStatus: normalizeStatus(asset.halal_status) ?? "compliant",
+        halalStatus: "compliant",
       });
     }
 

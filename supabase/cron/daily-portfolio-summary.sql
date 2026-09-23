@@ -1,5 +1,10 @@
 -- Rapport de clôture du portefeuille — planification côté Supabase.
 --
+-- ALTERNATIVE : vercel.json planifie déjà cette route sur Vercel (le header
+-- Authorization est ajouté automatiquement à partir de CRON_SECRET). N'utilisez
+-- ce script que si vous n'utilisez pas les crons Vercel, sinon l'email partira
+-- deux fois.
+--
 -- Prérequis (Dashboard → Database → Extensions) : activer `pg_cron` et `pg_net`.
 -- Remplacez ensuite les deux valeurs ci-dessous, puis exécutez ce script dans le
 -- SQL Editor. 16:30 UTC correspond à la clôture Euronext (17:30 à Paris en hiver).

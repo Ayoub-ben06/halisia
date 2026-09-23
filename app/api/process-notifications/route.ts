@@ -20,6 +20,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// Vercel Cron calls GET with `Authorization: Bearer $CRON_SECRET`; the
+// Supabase pg_cron script calls POST with the same header.
+export async function GET(request: NextRequest) {
+  return POST(request);
+}
+
 export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
