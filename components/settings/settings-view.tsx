@@ -51,6 +51,7 @@ export type SettingsProfile = {
   createdAt: string;
   dailySummaryEnabled: boolean;
   priceAlertsEnabled: boolean;
+  complianceAlertsEnabled: boolean;
   annualZakatReminderEnabled: boolean;
   zakatPaymentDate: string | null;
   preferences: PreferenceSettings;
@@ -157,6 +158,7 @@ export function SettingsView({
               userId={profile.userId}
               initialDailySummaryEnabled={profile.dailySummaryEnabled}
               initialPriceAlertsEnabled={profile.priceAlertsEnabled}
+              initialComplianceAlertsEnabled={profile.complianceAlertsEnabled}
               initialAnnualZakatReminderEnabled={
                 profile.annualZakatReminderEnabled
               }
@@ -597,11 +599,6 @@ function SubscriptionSection() {
 
 const upcomingNotifications = [
   {
-    label: "Alertes de conformité",
-    description:
-      "Recevez un email dès qu’un actif de votre portefeuille change de statut Shariah.",
-  },
-  {
     label: "Rapport mensuel",
     description:
       "Une synthèse mensuelle de la performance et de la conformité de votre portefeuille.",
@@ -617,6 +614,7 @@ function NotificationsSection({
   userId,
   initialDailySummaryEnabled,
   initialPriceAlertsEnabled,
+  initialComplianceAlertsEnabled,
   initialAnnualZakatReminderEnabled,
   hasZakatProfile,
   onSuccess,
@@ -625,6 +623,7 @@ function NotificationsSection({
   userId: string;
   initialDailySummaryEnabled: boolean;
   initialPriceAlertsEnabled: boolean;
+  initialComplianceAlertsEnabled: boolean;
   initialAnnualZakatReminderEnabled: boolean;
   hasZakatProfile: boolean;
   onSuccess: (message: string) => void;
@@ -632,6 +631,7 @@ function NotificationsSection({
 }) {
   const [dailyEnabled, setDailyEnabled] = useState(initialDailySummaryEnabled);
   const [priceEnabled, setPriceEnabled] = useState(initialPriceAlertsEnabled);
+  const [complianceEnabled, setComplianceEnabled] = useState(initialComplianceAlertsEnabled);
   const [zakatEnabled, setZakatEnabled] = useState(
     initialAnnualZakatReminderEnabled,
   );
@@ -663,38 +663,33 @@ function NotificationsSection({
   }
 
   async function togglePreference(
-    kind: "price" | "zakat",
+    kind: "price" | "zakat" | "compliance",
     next: boolean,
   ) {
-    const isZakat = kind === "zakat";
-    if (isZakat && next && !hasZakatProfile) {
+    if (kind === "zakat" && next && !hasZakatProfile) {
       onError("Configurez d’abord votre profil Zakat pour définir la date du Hawl");
       return;
     }
 
-    const previous = isZakat ? zakatEnabled : priceEnabled;
-    if (isZakat) setZakatEnabled(next);
-    else setPriceEnabled(next);
+    const settings = {
+      price: { value: priceEnabled, set: setPriceEnabled, column: "price_alerts_enabled", label: "Alertes de prix", suffix: "es" },
+      compliance: { value: complianceEnabled, set: setComplianceEnabled, column: "compliance_alerts_enabled", label: "Alertes de conformité", suffix: "es" },
+      zakat: { value: zakatEnabled, set: setZakatEnabled, column: "annual_zakat_reminder_enabled", label: "Rappel Zakat annuel", suffix: "" },
+    }[kind];
+    const previous = settings.value;
+    settings.set(next);
     setSaving(kind);
-
-    const values = isZakat
-      ? { user_id: userId, annual_zakat_reminder_enabled: next }
-      : { user_id: userId, price_alerts_enabled: next };
 
     try {
       const { error } = await createClient()
         .from("user_preferences")
-        .upsert(values, { onConflict: "user_id" });
+        .upsert({ user_id: userId, [settings.column]: next }, { onConflict: "user_id" });
       if (error) throw error;
-      onSuccess(
-        `${isZakat ? "Rappel Zakat annuel" : "Alertes de prix"} ${
-          next ? "activé" : "désactivé"
-        }${next ? " ✅" : ""}`,
-      );
-    } catch {
-      if (isZakat) setZakatEnabled(previous);
-      else setPriceEnabled(previous);
-      onError("Impossible d’enregistrer ce réglage");
+      onSuccess(`${settings.label} ${next ? "activé" : "désactivé"}${settings.suffix}${next ? " ✅" : ""}`);
+    } catch (caught) {
+      settings.set(previous);
+      const missingColumn = caught instanceof Error && /compliance_alerts_enabled/.test(caught.message);
+      onError(missingColumn ? "Réglage indisponible : la migration du 24/09/2026 (alertes de conformité) doit être appliquée" : "Impossible d’enregistrer ce réglage");
     } finally {
       setSaving(null);
     }
@@ -737,6 +732,14 @@ function NotificationsSection({
           checked={priceEnabled}
           disabled={saving === "price"}
           onChange={(checked) => void togglePreference("price", checked)}
+        />
+
+        <NotificationToggleCard
+          label="Alertes de conformité"
+          description="Recevez un email dès qu’une action de votre watchlist change de statut Shariah (conforme, douteux, non conforme). S’applique aux actions pour lesquelles l’alerte « Changement du statut Halal » est active dans la watchlist."
+          checked={complianceEnabled}
+          disabled={saving === "compliance"}
+          onChange={(checked) => void togglePreference("compliance", checked)}
         />
 
         <NotificationToggleCard

@@ -38,11 +38,11 @@ export default async function SettingsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // "*" rather than a column list: a column added by a migration that is not
+  // applied yet must not make the whole query (and every toggle) fail.
   const { data: preferences } = await supabase
     .from("user_preferences")
-    .select(
-      "daily_summary_enabled, price_alerts_enabled, annual_zakat_reminder_enabled, zakat_payment_date",
-    )
+    .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -59,6 +59,7 @@ export default async function SettingsPage({
     createdAt: user.created_at,
     dailySummaryEnabled: preferences?.daily_summary_enabled ?? false,
     priceAlertsEnabled: preferences?.price_alerts_enabled ?? false,
+    complianceAlertsEnabled: preferences?.compliance_alerts_enabled ?? false,
     annualZakatReminderEnabled:
       preferences?.annual_zakat_reminder_enabled ?? false,
     zakatPaymentDate: preferences?.zakat_payment_date ?? null,

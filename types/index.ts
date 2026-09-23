@@ -157,6 +157,7 @@ export type Database = {
           user_id: string;
           daily_summary_enabled: boolean;
           price_alerts_enabled: boolean;
+          compliance_alerts_enabled: boolean;
           annual_zakat_reminder_enabled: boolean;
           zakat_payment_date: string | null;
           zakat_reminder_last_sent_for: string | null;
@@ -168,6 +169,7 @@ export type Database = {
           user_id: string;
           daily_summary_enabled?: boolean;
           price_alerts_enabled?: boolean;
+          compliance_alerts_enabled?: boolean;
           annual_zakat_reminder_enabled?: boolean;
           zakat_payment_date?: string | null;
           zakat_reminder_last_sent_for?: string | null;

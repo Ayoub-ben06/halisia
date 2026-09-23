@@ -4,7 +4,7 @@ import { getFinancialData } from "@/lib/aaoifi/data-provider";
 import { runAAOIFI } from "@/lib/aaoifi/engine";
 import type { ScreeningStatus } from "@/lib/aaoifi/types";
 import { emailForUser, emailShell, escapeHtml, type RunResult } from "@/lib/event-notifications";
-import { writeCache } from "@/lib/halal-screening";
+import { toHalalStatus, writeCache } from "@/lib/halal-screening";
 import { DAILY_SUMMARY_FROM, getResend } from "@/lib/resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types";
@@ -54,6 +54,54 @@ async function sendNonComplianceNotice(change: Pick<ComplianceChange, "id" | "us
   );
   const { error } = await createAdminClient().from("compliance_changes").update({ notified_at: new Date().toISOString() }).eq("id", change.id);
   if (error) throw new Error(error.message);
+}
+
+type WatchAlert = { id: string; user_id: string; ticker: string; name: string };
+
+const HALAL_LABELS: Record<string, string> = { compliant: "conforme", debated: "douteux", non_compliant: "non conforme" };
+
+/** Active "halal_change" watchlist alerts of users who enabled compliance alerts in their settings. */
+async function loadComplianceWatchers(): Promise<WatchAlert[]> {
+  const admin = createAdminClient();
+  const { data: preferences, error } = await admin.from("user_preferences").select("user_id").eq("compliance_alerts_enabled", true);
+  // Column missing until the 20260924000001 migration is applied: no watcher.
+  if (error || !preferences?.length) return [];
+  const { data: alerts } = await admin
+    .from("watchlist_alerts")
+    .select("id, user_id, ticker, name")
+    .eq("alert_type", "halal_change")
+    .eq("is_active", true)
+    .in("user_id", preferences.map((row) => row.user_id));
+  return (alerts ?? []).map((alert) => ({ ...alert, ticker: normalizeTicker(alert.ticker) }));
+}
+
+async function notifyWatchlistStatusChange(ticker: string, previousStatus: string, screening: { status: string; reason?: string; companyName: string }, watchers: WatchAlert[], now: Date, result: RunResult) {
+  const admin = createAdminClient();
+  const before = HALAL_LABELS[toHalalStatus(previousStatus)];
+  const after = HALAL_LABELS[toHalalStatus(screening.status)];
+  for (const watcher of watchers.filter((alert) => alert.ticker === ticker)) {
+    try {
+      const name = watcher.name || screening.companyName || ticker;
+      const color = toHalalStatus(screening.status) === "compliant" ? "#10b981" : toHalalStatus(screening.status) === "debated" ? "#f59e0b" : "#ef4444";
+      const { email } = await emailForUser(watcher.user_id);
+      const { error } = await getResend().emails.send({
+        from: DAILY_SUMMARY_FROM,
+        to: email,
+        subject: `${name} est désormais ${after} (auparavant ${before})`,
+        html: emailShell(
+          `${escapeHtml(name)} change de statut Shariah`,
+          `<p style="color:#b8b4aa;line-height:1.6">${escapeHtml(name)} (${escapeHtml(ticker)}), suivi dans votre watchlist, passe de <strong>${before}</strong> à <strong style="color:${color}">${after}</strong> selon les critères AAOIFI.</p>${screening.reason ? `<p style="color:#b8b4aa;line-height:1.6">${escapeHtml(screening.reason)}</p>` : ""}<p style="color:#8f8878;font-size:13px">Vous recevez cet email car l’alerte « Changement du statut Halal » est active pour ce titre. Vous pouvez la désactiver depuis votre watchlist ou dans Paramètres › Notifications.</p>`,
+          "Voir l’analyse",
+          `${APP_URL}/asset/${encodeURIComponent(ticker)}`,
+        ),
+      });
+      if (error) throw new Error(error.message);
+      await admin.from("watchlist_alerts").update({ last_triggered_at: now.toISOString() }).eq("id", watcher.id);
+      result.sent += 1;
+    } catch (caught) {
+      result.failed.push({ id: `watch:${watcher.id}`, error: caught instanceof Error ? caught.message : "Erreur inconnue" });
+    }
+  }
 }
 
 async function loadStockHoldings(): Promise<Holding[]> {
@@ -139,6 +187,7 @@ export async function processComplianceScreening(now = new Date(), timeBudgetMs 
     })
     .sort((a, b) => (cache.get(a)?.screened_at ?? "").localeCompare(cache.get(b)?.screened_at ?? ""));
 
+  let watchers: WatchAlert[] | undefined;
   // Oldest screenings first, until the time budget of the cron run is spent;
   // the remaining tickers are picked up by the next run.
   for (const ticker of due) {
@@ -151,6 +200,14 @@ export async function processComplianceScreening(now = new Date(), timeBudgetMs 
       const screening = runAAOIFI(await getFinancialData(ticker));
       const previousStatus = cached?.status ?? null;
       await writeCache(ticker, screening, previousStatus, now.toISOString());
+
+      const before = previousStatus ? toHalalStatus(previousStatus) : "unknown";
+      const after = toHalalStatus(screening.status);
+      // Only real category changes: moves to or from "unknown" are data gaps.
+      if (before !== "unknown" && after !== "unknown" && before !== after) {
+        watchers ??= await loadComplianceWatchers();
+        await notifyWatchlistStatusChange(ticker, previousStatus!, screening, watchers, now, result);
+      }
 
       if (screening.status === "NON_COMPLIANT" && previousStatus && TRACKED_PREVIOUS_STATUSES.has(previousStatus)) {
         await openComplianceChanges(ticker, previousStatus, screening.status, holdings.filter((holding) => holding.ticker === ticker), now, result);

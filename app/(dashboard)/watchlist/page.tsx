@@ -18,7 +18,7 @@ export default async function WatchlistPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [watchlistResult, alertsResult] = await Promise.all([
+  const [watchlistResult, alertsResult, preferencesResult] = await Promise.all([
     supabase
       .from("watchlist")
       .select("*")
@@ -29,6 +29,7 @@ export default async function WatchlistPage() {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase.from("user_preferences").select("*").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const loadError = watchlistResult.error ?? alertsResult.error;
@@ -75,5 +76,12 @@ export default async function WatchlistPage() {
     isActive: row.is_active,
   }));
 
-  return <WatchlistView items={items} alerts={alerts} />;
+  return (
+    <WatchlistView
+      items={items}
+      alerts={alerts}
+      complianceAlertsEnabled={preferencesResult.data?.compliance_alerts_enabled ?? false}
+      priceAlertsEnabled={preferencesResult.data?.price_alerts_enabled ?? false}
+    />
+  );
 }

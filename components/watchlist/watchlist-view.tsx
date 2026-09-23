@@ -68,10 +68,18 @@ const dateFmt = new Intl.DateTimeFormat("fr-FR", {
 export function WatchlistView({
   items,
   alerts,
+  complianceAlertsEnabled = false,
+  priceAlertsEnabled = false,
 }: {
   items: WatchlistItem[];
   alerts: WatchlistAlert[];
+  complianceAlertsEnabled?: boolean;
+  priceAlertsEnabled?: boolean;
 }) {
+  const pausedAlerts = [
+    !complianceAlertsEnabled && alerts.some((alert) => alert.isActive && alert.alertType === "halal_change") ? "de conformité" : null,
+    !priceAlertsEnabled && alerts.some((alert) => alert.isActive && alert.alertType === "price_target") ? "de prix" : null,
+  ].filter(Boolean);
   const router = useRouter();
   const [watchlistModalOpen, setWatchlistModalOpen] = useState(false);
   const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
@@ -208,6 +216,17 @@ export function WatchlistView({
             + Ajouter une alerte
           </button>
         </div>
+
+        {pausedAlerts.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-halal-debated/30 bg-halal-debated/[0.06] px-4 py-3 text-sm">
+            <p className="text-[#e8d9b0]">
+              Vos alertes {pausedAlerts.join(" et ")} sont configurées mais les emails correspondants sont désactivés dans vos paramètres.
+            </p>
+            <Link href="/settings/notifications" className="font-semibold text-[#e6c364] hover:underline">
+              Activer les emails
+            </Link>
+          </div>
+        )}
 
         {alerts.length === 0 ? (
           <p className="mt-6 text-sm text-[#8f8878]">

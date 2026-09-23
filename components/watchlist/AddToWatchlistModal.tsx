@@ -431,7 +431,7 @@ export function AddToWatchlistModal({
 
                 <AlertToggle
                   title="M'alerter si le statut halal change"
-                  subtitle="Notification immédiate en cas de non-conformité"
+                  subtitle="Email dès que le statut Shariah change (à activer dans Paramètres › Notifications)"
                   checked={halalAlert}
                   onChange={setHalalAlert}
                 />
