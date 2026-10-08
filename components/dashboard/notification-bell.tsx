@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell, BellRing, TriangleAlert } from "lucide-react";
 import type { AppNotification } from "@/lib/notifications";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 const LAST_SEEN_KEY = "halisia-notifications-seen-at";
 
@@ -26,7 +27,8 @@ export function useUnreadNotifications(notifications: AppNotification[]) {
 }
 
 export function NotificationList({ notifications, compact = false }: { notifications: AppNotification[]; compact?: boolean }) {
-  if (!notifications.length) return <p className={`${compact ? "px-4 py-6" : "mt-5"} text-sm text-[#8f8878]`}>Aucune alerte pour le moment.</p>;
+  const { t } = useI18n();
+  if (!notifications.length) return <p className={`${compact ? "px-4 py-6" : "mt-5"} text-sm text-[#8f8878]`}>{t("noAlertsNow")}</p>;
   return (
     <ul className={compact ? "max-h-80 overflow-y-auto" : "mt-5 space-y-3"}>
       {notifications.map((item) => (
@@ -45,6 +47,7 @@ export function NotificationList({ notifications, compact = false }: { notificat
 }
 
 export function NotificationBell({ notifications }: { notifications: AppNotification[] }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { unread, markAllRead } = useUnreadNotifications(notifications);
@@ -58,15 +61,15 @@ export function NotificationBell({ notifications }: { notifications: AppNotifica
 
   return (
     <div ref={containerRef} className="relative">
-      <button type="button" aria-label={`Notifications${unread.length ? ` (${unread.length} non lues)` : ""}`} aria-expanded={open} onClick={() => setOpen(!open)} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1a1c1a]">
+      <button type="button" aria-label={`${t("notifications")}${unread.length ? ` (${unread.length} ${t("unreadNotifications")})` : ""}`} aria-expanded={open} onClick={() => setOpen(!open)} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1a1c1a]">
         <Bell className="h-5 w-5 text-[#d0c5b2]" />
         {unread.length > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#c9a84c] px-1 text-[9px] font-bold text-[#111412]">{unread.length}</span>}
       </button>
       {open && (
         <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-xl border border-white/[0.08] bg-[#151816] shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-3">
-            <p className="text-sm font-bold">Notifications</p>
-            {unread.length > 0 && <button type="button" onClick={markAllRead} className="text-xs font-semibold text-[#e6c364] hover:underline">Tout marquer comme lu</button>}
+            <p className="text-sm font-bold">{t("notifications")}</p>
+            {unread.length > 0 && <button type="button" onClick={markAllRead} className="text-xs font-semibold text-[#e6c364] hover:underline">{t("markAllRead")}</button>}
           </div>
           <NotificationList notifications={notifications} compact />
         </div>

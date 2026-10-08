@@ -22,14 +22,36 @@ const DEFAULT_SCREEN_BUDGET = 6;
 const CONCURRENCY = 3;
 
 export function toHalalStatus(status: string | null | undefined): HalalStatus {
-  if (status === "COMPLIANT") return "compliant";
-  if (status === "NON_COMPLIANT") return "non_compliant";
-  if (status === "DOUBTFUL" || status === "REVIEW_REQUIRED") return "debated";
+  const normalized = status?.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (normalized === "COMPLIANT" || normalized === "HALAL") return "compliant";
+  if (normalized === "NON_COMPLIANT" || normalized === "NOT_HALAL") return "non_compliant";
+  if (normalized === "DOUBTFUL" || normalized === "REVIEW_REQUIRED") return "debated";
   return "unknown";
 }
 
 export function normalizeTicker(ticker: string) {
   return ticker.trim().toUpperCase();
+}
+
+export function isStockAssetType(type: string | null | undefined) {
+  const normalized = (type ?? "").toLowerCase();
+  return normalized === "stock" || normalized === "action" || normalized === "equity";
+}
+
+const ISIN_EXCHANGE_SUFFIX: Record<string, string> = {
+  FR: ".PA", DE: ".DE", GB: ".L", CH: ".SW", NL: ".AS", IT: ".MI", ES: ".MC", BE: ".BR", DK: ".CO", SE: ".ST", NO: ".OL", FI: ".HE",
+};
+
+export function assetTicker(asset: { ticker?: string | null; name?: string | null }) {
+  return asset.ticker?.trim().toUpperCase() || asset.name?.match(/\(([A-Z0-9.-]+)\)\s*$/)?.[1]?.toUpperCase() || null;
+}
+
+export function screeningTickerForAsset(asset: { ticker?: string | null; name?: string | null; isin?: string | null }) {
+  const ticker = assetTicker(asset);
+  if (!ticker) return null;
+  if (ticker.includes(".")) return ticker;
+  const country = asset.isin?.slice(0, 2).toUpperCase();
+  return country && ISIN_EXCHANGE_SUFFIX[country] ? `${ticker}${ISIN_EXCHANGE_SUFFIX[country]}` : ticker;
 }
 
 function adminClient() {
@@ -107,7 +129,8 @@ export async function getTickerScreenings(rawTickers: string[], screenBudget = D
   for (const ticker of tickers) {
     const row = cache.get(ticker);
     if (row) output[ticker] = fromRow(row);
-    if (!row || now - new Date(row.screened_at).getTime() > FRESH_MS) toScreen.push(ticker);
+    const unresolved = row && (toHalalStatus(row.status) === "unknown" || !row.result);
+    if (!row || unresolved || now - new Date(row.screened_at).getTime() > FRESH_MS) toScreen.push(ticker);
   }
   await mapWithConcurrency(toScreen.slice(0, screenBudget), CONCURRENCY, async (ticker) => {
     try {
@@ -143,10 +166,20 @@ export async function getScreeningResult(rawTicker: string, options: { maxAgeMs?
  * remains debated among scholars, funds explicitly named "Islamic" follow a
  * Shariah-screened index; everything else uses the AAOIFI screening.
  */
-export function assetHalalStatus(asset: { type: string; name: string; ticker: string | null }, screenings: Record<string, TickerScreening>): HalalStatus {
+export function assetHalalStatus(asset: { type: string; name: string; ticker: string | null; isin?: string | null; halal_status?: string | null }, screenings: Record<string, TickerScreening>): HalalStatus {
   if (asset.type === "gold") return "compliant";
   if (asset.type === "crypto") return "debated";
+  // ETFs keep their manually/imported status as requested. Only individual
+  // stocks are recalculated from the AAOIFI screening engine.
+  if (asset.type === "etf") {
+    const stored = asset.halal_status?.toUpperCase();
+    if (stored === "COMPLIANT" || stored === "HALAL") return "compliant";
+    if (stored === "NON_COMPLIANT") return "non_compliant";
+    if (stored === "DOUBTFUL" || stored === "REVIEW_REQUIRED") return "debated";
+    return /ISLAMIC|SHARIAH|SHARIA/i.test(asset.name) ? "compliant" : "unknown";
+  }
   if (/ISLAMIC|SHARIAH|SHARIA/i.test(asset.name)) return "compliant";
-  const screening = asset.ticker ? screenings[normalizeTicker(asset.ticker)] : undefined;
+  const screeningTicker = screeningTickerForAsset(asset);
+  const screening = screeningTicker ? screenings[normalizeTicker(screeningTicker)] : undefined;
   return screening?.status ?? "unknown";
 }

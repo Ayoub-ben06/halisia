@@ -12,11 +12,10 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  halalStatusBadgeClass,
-  halalStatusLabel,
-} from "@/lib/halal-status";
+import { halalStatusBadgeClass, type HalalStatus } from "@/lib/halal-status";
+import { currencySymbol, formatQuoteAmount } from "@/lib/money";
 import { useHalalStatus } from "@/lib/use-halal-status";
+import { useI18n } from "@/components/providers/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,26 +42,16 @@ type QuoteData = {
   currency: string | null;
 };
 
-const euro = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  minimumFractionDigits: 2,
-});
-const pct = new Intl.NumberFormat("fr-FR", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
-function assetTypeLabel(type: string): string {
+function assetTypeLabel(type: string, t: (key: "stock" | "etf" | "crypto") => string): string {
   switch (type.toUpperCase()) {
     case "EQUITY":
-      return "Action";
+      return t("stock");
     case "ETF":
-      return "ETF";
+      return t("etf");
     case "CRYPTOCURRENCY":
-      return "Crypto";
+      return t("crypto");
     default:
-      return type || "Action";
+      return type || t("stock");
   }
 }
 
@@ -87,6 +76,7 @@ export function AddToWatchlistModal({
   existingTickers: string[];
 }) {
   const router = useRouter();
+  const { t, language } = useI18n();
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -103,7 +93,8 @@ export function AddToWatchlistModal({
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [toast, setToast] = useState("");
 
-  const { status: halalStatus, loading: halalStatusLoading } = useHalalStatus(selected);
+  const { status: halalStatus, loading: halalStatusLoading } =
+    useHalalStatus(selected);
 
   useEffect(() => {
     if (!toast) return;
@@ -133,13 +124,13 @@ export function AddToWatchlistModal({
           `/api/search-assets?q=${encodeURIComponent(value)}`,
           { signal: controller.signal },
         );
-        if (!response.ok) throw new Error("Recherche indisponible");
+        if (!response.ok) throw new Error(t("searchUnavailable"));
         setResults(await response.json());
         setSearchOpen(true);
       } catch (fetchError) {
-        if (
-          !(fetchError instanceof DOMException && fetchError.name === "AbortError")
-        ) {
+        if (!(
+          fetchError instanceof DOMException && fetchError.name === "AbortError"
+        )) {
           setResults([]);
           setSearchOpen(true);
         }
@@ -190,10 +181,15 @@ export function AddToWatchlistModal({
       const response = await fetch(
         `/api/quote?ticker=${encodeURIComponent(asset.ticker)}`,
       );
-      if (!response.ok) throw new Error("Prix indisponible");
+      if (!response.ok) throw new Error(t("unavailable"));
       setQuote(await response.json());
     } catch {
-      setQuote({ price: null, change: null, changePercent: null, currency: null });
+      setQuote({
+        price: null,
+        change: null,
+        changePercent: null,
+        currency: null,
+      });
     } finally {
       setQuoteLoading(false);
     }
@@ -218,7 +214,7 @@ export function AddToWatchlistModal({
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
-      if (authError || !user) throw new Error("Session expirée.");
+      if (authError || !user) throw new Error(t("sessionExpired"));
 
       const { error: insertError } = await supabase.from("watchlist").insert({
         user_id: user.id,
@@ -232,49 +228,53 @@ export function AddToWatchlistModal({
       if (insertError) {
         if (insertError.code === "23505") {
           setDuplicateWarning(true);
-          setError("Déjà dans votre watchlist");
+          setError(t("watchlistAlreadyAdded"));
           return;
         }
         throw insertError;
       }
 
       if (halalAlert) {
-        const { error: alertError } = await supabase.from("watchlist_alerts").insert({
-          user_id: user.id,
-          ticker: selected.ticker,
-          name: selected.name,
-          alert_type: "halal_change",
-          is_active: true,
-        });
+        const { error: alertError } = await supabase
+          .from("watchlist_alerts")
+          .insert({
+            user_id: user.id,
+            ticker: selected.ticker,
+            name: selected.name,
+            alert_type: "halal_change",
+            is_active: true,
+          });
         if (alertError) throw alertError;
       }
 
       if (priceAlert) {
         const target = numeric(priceTarget);
         if (!Number.isFinite(target) || target <= 0) {
-          setError("Indiquez un prix cible valide.");
+          setError(t("validPriceTarget"));
           return;
         }
-        const { error: alertError } = await supabase.from("watchlist_alerts").insert({
-          user_id: user.id,
-          ticker: selected.ticker,
-          name: selected.name,
-          alert_type: "price_target",
-          price_target: target,
-          is_active: true,
-        });
+        const { error: alertError } = await supabase
+          .from("watchlist_alerts")
+          .insert({
+            user_id: user.id,
+            ticker: selected.ticker,
+            name: selected.name,
+            alert_type: "price_target",
+            price_target: target,
+            is_active: true,
+          });
         if (alertError) throw alertError;
       }
 
       const shortName = selected.name.split(" ")[0];
-      setToast(`${shortName} ajouté à votre watchlist ✅`);
+      setToast(t("addedToWatchlist").replace("{name}", shortName));
       handleClose();
       router.refresh();
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Une erreur est survenue",
+          : t("genericError"),
       );
     } finally {
       setSubmitting(false);
@@ -286,11 +286,11 @@ export function AddToWatchlistModal({
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && handleClose()}>
-        <DialogContent className="border-white/[0.05] bg-[#111412] p-0 text-[#ffffff] sm:max-w-[560px]">
+        <DialogContent className="flex min-h-[620px] max-h-[calc(100vh-2rem)] flex-col overflow-y-auto border-white/[0.05] bg-[#111412] p-0 text-[#ffffff] sm:max-w-[560px]">
           <DialogHeader className="px-5 pt-5 sm:px-8 sm:pt-7">
-            <DialogTitle>Ajouter à ma Watchlist</DialogTitle>
+            <DialogTitle>{t("addToWatchlist")}</DialogTitle>
             <DialogDescription className="text-[rgba(255,255,255,0.6)]">
-              Recherchez un actif halal à surveiller
+              {t("searchHalalAsset")}
             </DialogDescription>
           </DialogHeader>
 
@@ -305,14 +305,14 @@ export function AddToWatchlistModal({
                   setQuery(event.target.value);
                 }}
                 onFocus={() => query.trim() && !selected && setSearchOpen(true)}
-                placeholder="Rechercher un actif (nom, ticker, ISIN...)"
+                placeholder={t("searchAssetPlaceholder")}
                 className="h-11 border-[#4d4637] bg-[#1a1c1a] pl-10 pr-10"
               />
               {query && (
                 <button
                   type="button"
                   onClick={clearSelection}
-                  aria-label="Effacer la recherche"
+                  aria-label={t("clearSearch")}
                   className="absolute right-3 top-3 text-[#8f8878] hover:text-[#ffffff]"
                 >
                   <X className="h-4 w-4" />
@@ -323,7 +323,7 @@ export function AddToWatchlistModal({
                   {searching ? (
                     <p className="flex items-center gap-2 p-4 text-sm text-[rgba(255,255,255,0.6)]">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Recherche...
+                      {t("searchInProgress")}
                     </p>
                   ) : results.length ? (
                     results.map((result) => {
@@ -336,7 +336,9 @@ export function AddToWatchlistModal({
                         >
                           <span className="min-w-0 flex-1 truncate text-sm">
                             <strong>{result.ticker}</strong>{" "}
-                            <span className="text-[rgba(255,255,255,0.6)]">{result.name}</span>
+                            <span className="text-[rgba(255,255,255,0.6)]">
+                              {result.name}
+                            </span>
                           </span>
                           {result.exchange && (
                             <span className="shrink-0 text-xs text-[#8f8878]">
@@ -347,7 +349,9 @@ export function AddToWatchlistModal({
                       );
                     })
                   ) : (
-                    <p className="p-4 text-sm text-[#8f8878]">Aucun actif trouvé.</p>
+                    <p className="p-4 text-sm text-[#8f8878]">
+                      {t("noAssetFound")}
+                    </p>
                   )}
                 </div>
               )}
@@ -362,7 +366,9 @@ export function AddToWatchlistModal({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-bold text-[#ffffff]">{selected.name}</p>
+                        <p className="font-bold text-[#ffffff]">
+                          {selected.name}
+                        </p>
                         <p className="text-xs text-[#8f8878]">
                           {selected.ticker}
                           {selected.exchange ? ` • ${selected.exchange}` : ""}
@@ -370,7 +376,7 @@ export function AddToWatchlistModal({
                       </div>
                       {halalStatusLoading && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-bold uppercase text-[rgba(255,255,255,0.6)]">
-                          <Loader2 className="h-3 w-3 animate-spin" /> Analyse…
+                          <Loader2 className="h-3 w-3 animate-spin" /> {t("analysisInProgress")}
                         </span>
                       )}
                       {halalStatus && (
@@ -378,35 +384,41 @@ export function AddToWatchlistModal({
                           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${halalStatusBadgeClass(halalStatus)}`}
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                          {halalStatusLabel(halalStatus)}
+                          {halalStatusText(halalStatus, t)}
                         </span>
                       )}
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-xs text-[#8f8878]">Type</p>
-                        <p className="font-semibold">{assetTypeLabel(selected.type)}</p>
+                        <p className="text-xs text-[#8f8878]">{t("portfolioType")}</p>
+                        <p className="font-semibold">
+                          {assetTypeLabel(selected.type, t)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#8f8878]">Prix Actuel</p>
+                        <p className="text-xs text-[#8f8878]">
+                          {t("currentPrice")}
+                        </p>
                         {quoteLoading ? (
-                          <p className="text-[rgba(255,255,255,0.6)]">Chargement...</p>
+                          <p className="text-[rgba(255,255,255,0.6)]">
+                            {t("loading")}
+                          </p>
                         ) : quote?.price != null ? (
                           <p>
                             <span className="text-lg font-bold">
-                              {euro.format(quote.price)}
+                              {formatQuoteAmount(quote.price, quote.currency)}
                             </span>
                             {quote.changePercent != null && (
                               <span
                                 className={`ml-2 text-xs font-semibold ${changePositive ? "text-halal-compliant" : "text-halal-nonCompliant"}`}
                               >
                                 {changePositive ? "+" : ""}
-                                {pct.format(quote.changePercent)} %
+                                {new Intl.NumberFormat(language === "en" ? "en-US" : "fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(quote.changePercent)} %
                               </span>
                             )}
                           </p>
                         ) : (
-                          <p className="text-[#8f8878]">Prix indisponible</p>
+                          <p className="text-[#8f8878]">{t("unavailable")}</p>
                         )}
                       </div>
                     </div>
@@ -418,7 +430,7 @@ export function AddToWatchlistModal({
             {duplicateWarning && (
               <p className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
                 <CircleAlert className="h-4 w-4 shrink-0" />
-                Déjà dans votre watchlist
+                {t("watchlistAlreadyAdded")}
               </p>
             )}
 
@@ -426,19 +438,19 @@ export function AddToWatchlistModal({
               <div className="space-y-4 rounded-xl border border-white/[0.05] bg-[#1a1c1a] p-4">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[#e6c364]">
                   <Bell className="h-4 w-4" />
-                  Configurer une alerte (optionnel)
+                  {t("configureAlert")} ({t("optional")})
                 </p>
 
                 <AlertToggle
-                  title="M'alerter si le statut halal change"
-                  subtitle="Email dès que le statut Shariah change (à activer dans Paramètres › Notifications)"
+                  title={t("halalStatusAlert")}
+                  subtitle={t("emailOnHalalChange")}
                   checked={halalAlert}
                   onChange={setHalalAlert}
                 />
 
                 <div className="space-y-3">
                   <AlertToggle
-                    title="M'alerter si le prix atteint"
+                    title={t("priceTargetAlert")}
                     checked={priceAlert}
                     onChange={setPriceAlert}
                   />
@@ -449,11 +461,11 @@ export function AddToWatchlistModal({
                         inputMode="decimal"
                         value={priceTarget}
                         onChange={(event) => setPriceTarget(event.target.value)}
-                        placeholder="Ex: 160,00"
+                        placeholder={t("priceExample")}
                         className="h-11 border-[#4d4637] bg-[#111412] pr-10"
                       />
                       <span className="pointer-events-none absolute right-3 top-3 text-sm text-[#8f8878]">
-                        €
+                        {currencySymbol(quote?.currency)}
                       </span>
                     </div>
                   )}
@@ -469,8 +481,12 @@ export function AddToWatchlistModal({
             )}
 
             <DialogFooter className="gap-2 border-t border-white/[0.05] pt-4 sm:justify-between">
-              <Button variant="ghost" onClick={handleClose} disabled={submitting}>
-                Annuler
+              <Button
+                variant="ghost"
+                onClick={handleClose}
+                disabled={submitting}
+              >
+                {t("cancelAction")}
               </Button>
               <Button
                 onClick={() => void handleSubmit()}
@@ -480,7 +496,7 @@ export function AddToWatchlistModal({
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>+ Ajouter à ma Watchlist</>
+                  <>+ {t("addToWatchlist")}</>
                 )}
               </Button>
             </DialogFooter>
@@ -499,6 +515,19 @@ export function AddToWatchlistModal({
       )}
     </>
   );
+}
+
+function halalStatusText(
+  status: HalalStatus,
+  t: (key: "statusCompliant" | "statusDoubtful" | "statusNonCompliant" | "notAnalyzed") => string,
+) {
+  return status === "compliant"
+    ? t("statusCompliant")
+    : status === "debated"
+      ? t("statusDoubtful")
+      : status === "non_compliant"
+        ? t("statusNonCompliant")
+        : t("notAnalyzed");
 }
 
 function AlertToggle({

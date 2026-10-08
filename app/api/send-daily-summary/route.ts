@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildDailySummaries, listDailySummaryRecipients } from "@/lib/daily-summary";
 import { sendDailySummary } from "@/lib/daily-summary-mail";
+import { reportError, reportFailures } from "@/lib/monitoring";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,10 +46,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Daily summary sent to ${sent} users`);
+    reportFailures("cron:daily-summary", failed.map((item) => ({ id: item.userId, error: item.error })));
     return NextResponse.json({ success: true, sent, failed });
   } catch (error) {
+    reportError(error, "cron:daily-summary");
     const message = error instanceof Error ? error.message : "Erreur inconnue";
-    console.error("Daily summary run failed:", message);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

@@ -14,8 +14,10 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { AddAssetModal } from "@/components/dashboard/add-asset-modal";
+import { ImportModal } from "@/components/portfolio/ImportModal";
 import {
   PositionActionsDialog,
   type PositionAction,
@@ -23,6 +25,7 @@ import {
 } from "@/components/dashboard/position-actions-dialog";
 import type { AssetClass, PositionSource } from "@/lib/portfolio-mutations";
 import { moneyFormatter } from "@/lib/money";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 export type PortfolioRow = {
   id: string;
@@ -53,16 +56,59 @@ const typeStyles = {
   Or: "border-yellow-600/50 bg-yellow-600/10 text-yellow-400",
 };
 
-export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }: { rows: PortfolioRow[]; displayCurrency?: string; displayRate?: number }) {
-  const money = useMemo(() => moneyFormatter(displayCurrency, displayRate), [displayCurrency, displayRate]);
+export function PortfolioView({
+  rows,
+  zakatEstimate = 0,
+  displayCurrency = "EUR",
+  displayRate = 1,
+  importedCount = null,
+}: {
+  rows: PortfolioRow[];
+  zakatEstimate?: number;
+  displayCurrency?: string;
+  displayRate?: number;
+  importedCount?: number | null;
+}) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const money = useMemo(
+    () => moneyFormatter(displayCurrency, displayRate),
+    [displayCurrency, displayRate],
+  );
   const [assetFilter, setAssetFilter] = useState<AssetFilter>("Tous");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Tous");
   const [modalOpen, setModalOpen] = useState(false);
-  const [actionTarget, setActionTarget] = useState<PositionActionTarget | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [showImportedBanner, setShowImportedBanner] = useState(Boolean(importedCount));
+
+  useEffect(() => {
+    setShowImportedBanner(Boolean(importedCount));
+  }, [importedCount]);
+  const [actionTarget, setActionTarget] = useState<PositionActionTarget | null>(
+    null,
+  );
   const [action, setAction] = useState<PositionAction | null>(null);
   const openAction = (row: PortfolioRow, next: PositionAction) => {
-    const assetClass: AssetClass = row.type === "ETF" ? "etf" : row.type === "Crypto" ? "crypto" : row.type === "Or" ? "gold" : "stock";
-    setActionTarget({ id: row.id, source: row.source, name: row.name, ticker: row.ticker, assetClass, account: row.account, quantity: row.quantity, averagePrice: row.averagePrice, currentPrice: row.currentPrice, unit: row.type === "Or" ? " g" : undefined });
+    const assetClass: AssetClass =
+      row.type === "ETF"
+        ? "etf"
+        : row.type === "Crypto"
+          ? "crypto"
+          : row.type === "Or"
+            ? "gold"
+            : "stock";
+    setActionTarget({
+      id: row.id,
+      source: row.source,
+      name: row.name,
+      ticker: row.ticker,
+      assetClass,
+      account: row.account,
+      quantity: row.quantity,
+      averagePrice: row.averagePrice,
+      currentPrice: row.currentPrice,
+      unit: row.type === "Or" ? " g" : undefined,
+    });
     setAction(next);
   };
   const filtered = rows.filter(
@@ -113,8 +159,26 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
   };
   return (
     <div className="mx-auto max-w-[1280px] text-[#ffffff]">
+      {showImportedBanner && importedCount ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <p>
+            🎉 {importedCount} actif{importedCount > 1 ? "s" : ""} importé
+            {importedCount > 1 ? "s" : ""} — voici votre portefeuille halal
+          </p>
+          <button
+            type="button"
+            className="text-xs font-semibold text-emerald-200 underline underline-offset-2"
+            onClick={() => {
+              setShowImportedBanner(false);
+              router.replace("/portfolio");
+            }}
+          >
+            Fermer
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Mon Portefeuille</h1>
+        <h1 className="text-3xl font-bold">{t("portfolioTitle")}</h1>
         <div className="flex items-stretch gap-3">
           <button
             type="button"
@@ -122,6 +186,13 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
             className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-[#344038] px-4 py-0 text-sm leading-none hover:bg-[#1a1e1b]"
           >
             Exporter <Download className="h-4 w-4 shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-[#344038] px-4 py-0 text-sm leading-none hover:bg-[#1a1e1b]"
+          >
+            Importer CSV/XLSX
           </button>
           <button
             type="button"
@@ -133,19 +204,16 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
         </div>
       </div>
       <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Total investi" value={money.format(totals.invested)} />
+        <Metric label={t("totalInvested")} value={money.format(totals.invested)} />
+        <Metric label={t("currentValue")} value={money.format(totals.current)} />
         <Metric
-          label="Valeur actuelle"
-          value={money.format(totals.current)}
-        />
-        <Metric
-          label="Plus-value globale"
+          label={t("globalGain")}
           value={`${gain >= 0 ? "+" : ""}${money.format(gain)}`}
           note={`(${gainPercent >= 0 ? "+" : ""}${gainPercent.toFixed(1).replace(".", ",")}%)`}
           positive={gain >= 0}
         />
         <Metric
-          label="À purifier"
+          label={t("toPurify")}
           value={money.format(totals.purification)}
           icon={<ShieldAlert className="h-5 w-5 text-[#c9a84c]" />}
         />
@@ -169,32 +237,34 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
             active={statusFilter === "Tous"}
             onClick={() => setStatusFilter("Tous")}
           >
-            Tous
+            {t("all")}
           </FilterButton>
           <FilterButton
             active={statusFilter === "compliant"}
             onClick={() => setStatusFilter("compliant")}
           >
-            <CircleCheck className="h-3.5 w-3.5 text-halal-compliant" /> Conforme
+            <CircleCheck className="h-3.5 w-3.5 text-halal-compliant" />{" "}
+            {t("statusCompliant")}
           </FilterButton>
           <FilterButton
             active={statusFilter === "debated"}
             onClick={() => setStatusFilter("debated")}
           >
-            <TriangleAlert className="h-3.5 w-3.5 text-halal-debated" /> Douteux
+            <TriangleAlert className="h-3.5 w-3.5 text-halal-debated" /> {t("statusDoubtful")}
           </FilterButton>
           <FilterButton
             active={statusFilter === "non_compliant"}
             onClick={() => setStatusFilter("non_compliant")}
           >
-            <CircleX className="h-3.5 w-3.5 text-halal-nonCompliant" /> Non conforme
+            <CircleX className="h-3.5 w-3.5 text-halal-nonCompliant" /> {t("statusNonCompliant")}
           </FilterButton>
           {rows.some((row) => row.status === "unknown") && (
             <FilterButton
               active={statusFilter === "unknown"}
               onClick={() => setStatusFilter("unknown")}
             >
-              <CircleHelp className="h-3.5 w-3.5 text-[rgba(255,255,255,0.6)]" /> Non analysé
+              <CircleHelp className="h-3.5 w-3.5 text-[rgba(255,255,255,0.6)]" />{" "}
+              {t("notAnalyzed")}
             </FilterButton>
           )}
         </div>
@@ -205,17 +275,17 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
             <thead className="border-b border-white/[0.05] text-left text-[11px] uppercase tracking-wider text-[rgba(255,255,255,0.6)]">
               <tr>
                 {[
-                  "Actif",
-                  "Type",
-                  "Compte",
-                  "Qté",
-                  "PRU",
-                  "Prix actuel",
-                  "Valeur",
-                  "+/-",
-                  "Statut halal",
-                  "Purification",
-                  "Action",
+                  t("portfolioAsset"),
+                  t("portfolioType"),
+                  t("portfolioAccount"),
+                  t("portfolioQuantity"),
+                  t("portfolioAveragePrice"),
+                  t("portfolioCurrentPrice"),
+                  t("portfolioValue"),
+                  t("portfolioGainLoss"),
+                  t("halalStatus"),
+                  t("purification"),
+                  t("portfolioAction"),
                 ].map((heading) => (
                   <th key={heading} className="px-4 py-4 font-medium">
                     {heading}
@@ -245,7 +315,7 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <Badge className={typeStyles[row.type]}>{row.type}</Badge>
+                      <Badge className={typeStyles[row.type]}>{assetTypeLabel(row.type, t)}</Badge>
                     </td>
                     <td className="px-4 py-4">
                       <Badge
@@ -278,9 +348,9 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
                       {money.format(rowGain)}
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <StatusIcon status={row.status} />
+                      <StatusIcon status={row.status} t={t} />
                       {row.complianceDay != null && (
-                        <ComplianceCountdown day={row.complianceDay} />
+                        <ComplianceCountdown day={row.complianceDay} t={t} />
                       )}
                     </td>
                     <td
@@ -292,25 +362,48 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
                       }
                     >
                       {row.purification === null
-                        ? "N/A"
+                        ? t("unavailableShort")
                         : row.purification === 0
-                          ? "Aucune"
+                          ? t("none")
                           : money.format(row.purification)}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center gap-2 text-[rgba(255,255,255,0.6)]">
                         {row.detailTicker && (
-                          <Link href={`/asset/${encodeURIComponent(row.detailTicker)}`} aria-label={`Voir ${row.name}`} title="Voir la fiche" className="rounded p-1 hover:text-[#e6c364]">
+                          <Link
+                            href={`/asset/${encodeURIComponent(row.detailTicker)}`}
+                            aria-label={`${t("actionView")} ${row.name}`}
+                            title={t("actionView")}
+                            className="rounded p-1 hover:text-[#e6c364]"
+                          >
                             <Eye className="h-4 w-4" />
                           </Link>
                         )}
-                        <button type="button" onClick={() => openAction(row, "edit")} aria-label={`Modifier ${row.name}`} title="Modifier" className="rounded p-1 hover:text-[#e6c364]">
+                        <button
+                          type="button"
+                          onClick={() => openAction(row, "edit")}
+                          aria-label={`${t("actionEdit")} ${row.name}`}
+                          title={t("actionEdit")}
+                          className="rounded p-1 hover:text-[#e6c364]"
+                        >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button type="button" onClick={() => openAction(row, "sell")} aria-label={`Vendre ${row.name}`} title="Enregistrer une vente" className="rounded p-1 hover:text-[#e6c364]">
+                        <button
+                          type="button"
+                          onClick={() => openAction(row, "sell")}
+                          aria-label={`${t("actionSell")} ${row.name}`}
+                          title={t("actionSell")}
+                          className="rounded p-1 hover:text-[#e6c364]"
+                        >
                           <HandCoins className="h-4 w-4" />
                         </button>
-                        <button type="button" onClick={() => openAction(row, "delete")} aria-label={`Supprimer ${row.name}`} title="Supprimer" className="rounded p-1 hover:text-halal-nonCompliant">
+                        <button
+                          type="button"
+                          onClick={() => openAction(row, "delete")}
+                          aria-label={`${t("actionDelete")} ${row.name}`}
+                          title={t("actionDelete")}
+                          className="rounded p-1 hover:text-halal-nonCompliant"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -322,20 +415,20 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
           </table>
           {!filtered.length && (
             <p className="py-12 text-center text-sm text-[#8f8878]">
-              Aucun actif ne correspond à ces filtres.
+              {t("noMatchingAssets")}
             </p>
           )}
         </div>
         <div className="flex flex-wrap justify-between gap-3 bg-[#1a1c1a] px-4 py-4 text-xs text-[rgba(255,255,255,0.6)]">
           <span>
-            Investi : <strong>{money.format(totals.invested)}</strong>　 Valeur
-            : <strong>{money.format(totals.current)}</strong>　 Zakat est. :{" "}
+            {t("invested")} : <strong>{money.format(totals.invested)}</strong>　 {t("portfolioValue")}
+            : <strong>{money.format(totals.current)}</strong>　 {t("estimatedZakat")} :{" "}
             <strong className="text-[#c9a84c]">
-              {money.format(totals.current * 0.025)}
+              {money.format(zakatEstimate)}
             </strong>
           </span>
           <span>
-            Purification totale :{" "}
+            {t("totalPurification")} :{" "}
             <strong className="text-halal-debated">
               {money.format(totals.purification)}
             </strong>
@@ -343,11 +436,18 @@ export function PortfolioView({ rows, displayCurrency = "EUR", displayRate = 1 }
         </div>
       </div>
       <p className="mt-4 text-right text-xs text-[#8f8878]">
-        {filtered.length} actif{filtered.length > 1 ? "s" : ""} affiché
-        {filtered.length > 1 ? "s" : ""}
+        {filtered.length} {filtered.length > 1 ? t("assetsDisplayed") : t("assetDisplayed")}
       </p>
       <AddAssetModal open={modalOpen} onClose={() => setModalOpen(false)} />
-      <PositionActionsDialog target={actionTarget} action={action} onClose={() => { setAction(null); setActionTarget(null); }} />
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+      <PositionActionsDialog
+        target={actionTarget}
+        action={action}
+        onClose={() => {
+          setAction(null);
+          setActionTarget(null);
+        }}
+      />
     </div>
   );
 }
@@ -415,11 +515,11 @@ function Badge({
     </span>
   );
 }
-function ComplianceCountdown({ day }: { day: number }) {
+function ComplianceCountdown({ day, t }: { day: number; t: (key: "nonCompliantDay") => string }) {
   return (
     <div className="mx-auto mt-2 w-[150px] text-left">
       <span className="inline-flex whitespace-nowrap rounded-full border border-halal-nonCompliant/50 bg-halal-nonCompliant/10 px-2 py-0.5 text-[10px] font-semibold text-halal-nonCompliant">
-        ⚠️ Non conforme — J+{day}/90
+        ⚠️ {t("nonCompliantDay").replace("{day}", String(day))}
       </span>
       <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/10">
         <div
@@ -430,32 +530,37 @@ function ComplianceCountdown({ day }: { day: number }) {
     </div>
   );
 }
-function StatusIcon({ status }: { status: PortfolioRow["status"] }) {
+function StatusIcon({ status, t }: { status: PortfolioRow["status"]; t: (key: "statusCompliant" | "statusDoubtful" | "statusNonCompliant" | "notAnalyzed") => string }) {
+  const label = status === "compliant" ? t("statusCompliant") : status === "debated" ? t("statusDoubtful") : status === "unknown" ? t("notAnalyzed") : t("statusNonCompliant");
   if (status === "compliant")
     return (
-      <CircleCheck
-        aria-label="Conforme"
-        className="mx-auto h-4 w-4 text-halal-compliant"
-      />
+      <span className="inline-flex items-center gap-1.5 font-medium text-halal-compliant">
+        <CircleCheck aria-label={label} className="h-4 w-4" />
+        {label}
+      </span>
     );
   if (status === "debated")
     return (
-      <TriangleAlert
-        aria-label="Douteux"
-        className="mx-auto h-4 w-4 text-halal-debated"
-      />
+      <span className="inline-flex items-center gap-1.5 font-medium text-halal-debated">
+        <TriangleAlert aria-label={label} className="h-4 w-4" />
+        {label}
+      </span>
     );
   if (status === "unknown")
     return (
-      <CircleHelp
-        aria-label="Non analysé"
-        className="mx-auto h-4 w-4 text-[rgba(255,255,255,0.5)]"
-      />
+      <span className="inline-flex items-center gap-1.5 font-medium text-[rgba(255,255,255,0.6)]">
+        <CircleHelp aria-label={label} className="h-4 w-4" />
+        {label}
+      </span>
     );
   return (
-    <CircleX
-      aria-label="Non conforme"
-      className="mx-auto h-4 w-4 text-halal-nonCompliant"
-    />
+    <span className="inline-flex items-center gap-1.5 font-medium text-halal-nonCompliant">
+      <CircleX aria-label={label} className="h-4 w-4" />
+      {label}
+  </span>
   );
+}
+
+function assetTypeLabel(type: PortfolioRow["type"], t: (key: "stock" | "etf" | "crypto" | "gold") => string) {
+  return type === "Action" ? t("stock") : type === "ETF" ? t("etf") : type === "Crypto" ? t("crypto") : t("gold");
 }

@@ -1,5 +1,5 @@
 import { AAOIFI_SCREENING_V1 } from "./thresholds";
-import { BUSINESS_MODEL_DOUBTFUL_NOTE, getBusinessModelDoubt, getFinancialSectorClients, getIslamicFinancial, getNonPermissibleRevenue, getWeaponsExposure } from "./business-model";
+import { BUSINESS_MODEL_DOUBTFUL_NOTE, getAlwaysNonCompliant, getBusinessModelDoubt, getFinancialSectorClients, getIslamicFinancial, getNeedsInvestigation, getNonPermissibleRevenue, getWeaponsExposure } from "./business-model";
 import { getDoubtfulActivityReason, getNonCompliantReason, isForbiddenSector } from "./rules";
 import type { CriterionResult, FinancialValue, NormalizedFinancialData, ScreeningResult } from "./types";
 
@@ -19,10 +19,11 @@ function ratioResult(key: string, label: string, numerator: FinancialValue | und
 
 export function runAAOIFI(data: NormalizedFinancialData): ScreeningResult {
   const t = AAOIFI_SCREENING_V1;
+  const debtDenominator = data.marketCapitalization;
   const criteria = [
     ratioResult("impureRevenue", "Revenus impurs", data.impureRevenue, data.totalRevenue, t.impureRevenueRatio.value, t.impureRevenueRatio.operator),
-    ratioResult("interestBearingDebt", "Dette portant intérêt", data.interestBearingDebt, data.marketCapitalization, t.interestBearingDebtRatio.value, t.interestBearingDebtRatio.operator),
-    ratioResult("interestBearingCashAndSecurities", "Actifs portant intérêt", data.interestBearingCashAndSecurities, data.marketCapitalization, t.interestBearingCashAndSecuritiesRatio.value, t.interestBearingCashAndSecuritiesRatio.operator),
+    ratioResult("interestBearingDebt", "Dette portant intérêt", data.interestBearingDebt, debtDenominator, t.interestBearingDebtRatio.value, t.interestBearingDebtRatio.operator),
+    ratioResult("interestBearingCashAndSecurities", "Actifs portant intérêt", data.interestBearingCashAndSecurities, debtDenominator, t.interestBearingCashAndSecuritiesRatio.value, t.interestBearingCashAndSecuritiesRatio.operator),
     ratioResult("liquidity", "Liquidités / actifs", data.liquidity, data.totalAssets, t.liquidityToAssetsRatio.value, t.liquidityToAssetsRatio.operator),
   ];
   // The verdict must be based on evidence, not on a ticker allow/deny list.
@@ -34,11 +35,13 @@ export function runAAOIFI(data: NormalizedFinancialData): ScreeningResult {
   const weaponsExposure = getWeaponsExposure(data.ticker);
   const financialClients = getFinancialSectorClients(data.ticker);
   const nonPermissibleRevenue = getNonPermissibleRevenue(data.ticker) ?? (financialClients && `Clients du secteur financier : ${financialClients}`);
+  const alwaysNonCompliant = getAlwaysNonCompliant(data.ticker);
   // A provider-level FAIL (e.g. SEC activity keywords) must never be overridden
   // just because a sector label is present.
-  const forbiddenActivity = forbiddenSector || Boolean(weaponsExposure) || Boolean(nonPermissibleRevenue) || (!islamicFinancial && data.business.status === "FAIL");
+  const forbiddenActivity = Boolean(alwaysNonCompliant) || forbiddenSector || Boolean(weaponsExposure) || Boolean(nonPermissibleRevenue) || (!islamicFinancial && data.business.status === "FAIL");
   const businessStatus = forbiddenActivity ? "FAIL" : data.sector || data.industry ? "PASS" : data.business.status;
-  const explanation = forbiddenSector
+  const explanation = alwaysNonCompliant ? alwaysNonCompliant
+    : forbiddenSector
     ? getNonCompliantReason(data.ticker, data.sector, data.industry)
     : weaponsExposure ? `Armement : ${weaponsExposure}.`
       : nonPermissibleRevenue ? `Revenus non permis : ${nonPermissibleRevenue}.`
@@ -65,7 +68,10 @@ function decide(all: CriterionResult[], data: NormalizedFinancialData): Pick<Scr
   const doubtfulActivity = getDoubtfulActivityReason(data.industry);
   if (doubtfulActivity) return { status: "DOUBTFUL", confidence, reason: doubtfulActivity, note: "Les ratios financiers sont conformes ; la part des revenus non permis doit être vérifiée dans le rapport annuel." };
   const unknown = all.filter((criterion) => criterion.status === "UNKNOWN");
-  if (!unknown.length) return { status: "COMPLIANT", confidence };
+  const investigation = getNeedsInvestigation(data.ticker);
+  if (!unknown.length) return investigation
+    ? { status: "COMPLIANT", confidence, reason: "Résultat financier conforme, mais une analyse business complémentaire est nécessaire.", note: `NEEDS_INVESTIGATION: ${investigation}` }
+    : { status: "COMPLIANT", confidence };
   // Interest income is often not tagged in XBRL for non-financial companies;
   // its absence alone should not block a verdict when every other test passes.
   if (unknown.length === 1 && unknown[0].key === "impureRevenue") {

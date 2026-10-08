@@ -16,15 +16,16 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatQuoteAmount } from "@/lib/money";
 import {
   halalStatusBadgeClass,
-  halalStatusLabel,
   isWatchlistCompliant,
   isWatchlistToMonitor,
   type HalalStatus,
 } from "@/lib/halal-status";
 import { AddAssetModal } from "@/components/dashboard/add-asset-modal";
 import { AddToWatchlistModal } from "@/components/watchlist/AddToWatchlistModal";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 export type WatchlistItem = {
   id: string;
@@ -37,6 +38,8 @@ export type WatchlistItem = {
   price: number | null;
   change: number | null;
   changePercent: number | null;
+  /** Quote currency of `price` and `change` (e.g. USD, EUR, GBp). */
+  currency: string | null;
   halalStatus: HalalStatus;
   sparkline: number[];
 };
@@ -50,21 +53,6 @@ export type WatchlistAlert = {
   isActive: boolean;
 };
 
-const euro = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  minimumFractionDigits: 2,
-});
-const pct = new Intl.NumberFormat("fr-FR", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-const dateFmt = new Intl.DateTimeFormat("fr-FR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-
 export function WatchlistView({
   items,
   alerts,
@@ -76,9 +64,10 @@ export function WatchlistView({
   complianceAlertsEnabled?: boolean;
   priceAlertsEnabled?: boolean;
 }) {
+  const { t, language } = useI18n();
   const pausedAlerts = [
-    !complianceAlertsEnabled && alerts.some((alert) => alert.isActive && alert.alertType === "halal_change") ? "de conformité" : null,
-    !priceAlertsEnabled && alerts.some((alert) => alert.isActive && alert.alertType === "price_target") ? "de prix" : null,
+    !complianceAlertsEnabled && alerts.some((alert) => alert.isActive && alert.alertType === "halal_change") ? t("complianceAlertType") : null,
+    !priceAlertsEnabled && alerts.some((alert) => alert.isActive && alert.alertType === "price_target") ? t("priceAlertType") : null,
   ].filter(Boolean);
   const router = useRouter();
   const [watchlistModalOpen, setWatchlistModalOpen] = useState(false);
@@ -115,10 +104,10 @@ export function WatchlistView({
       const supabase = createClient();
       const { error } = await supabase.from("watchlist").delete().eq("id", id);
       if (error) throw error;
-      showToast("Retiré de la watchlist");
+      showToast(t("removedFromWatchlist"));
       router.refresh();
     } catch {
-      showError("Une erreur est survenue");
+      showError(t("genericError"));
     }
   }
 
@@ -132,7 +121,7 @@ export function WatchlistView({
       if (error) throw error;
       router.refresh();
     } catch {
-      showError("Une erreur est survenue");
+      showError(t("genericError"));
     }
   }
 
@@ -151,9 +140,9 @@ export function WatchlistView({
     <div className="mx-auto max-w-[1280px] text-[#ffffff]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Watchlist</h1>
+          <h1 className="text-3xl font-bold">{t("watchlist")}</h1>
           <p className="mt-1 text-sm text-[rgba(255,255,255,0.6)]">
-            Suivez vos actifs halal avant d&apos;investir
+            {t("watchlistSubtitle")}
           </p>
         </div>
         <button
@@ -162,25 +151,25 @@ export function WatchlistView({
           className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#c9a84c] px-5 text-sm font-bold text-[#111412] hover:bg-[#e6c364]"
         >
           <Plus className="h-4 w-4" />
-          Ajouter un actif
+          {t("addAsset")}
         </button>
       </div>
 
       <div className="mt-8 grid gap-5 sm:grid-cols-3">
         <SummaryCard
-          label="Total Suivi"
+          label={t("totalTracked")}
           value={String(items.length)}
-          suffix="actifs"
+          suffix={t("assets")}
           icon={<Eye className="h-5 w-5 text-[#c9a84c]" />}
         />
         <SummaryCard
-          label="Conformes"
+          label={t("statusCompliant")}
           value={String(compliantCount)}
           icon={<CheckCircle2 className="h-5 w-5 text-halal-compliant" />}
           valueClass="text-halal-compliant"
         />
         <SummaryCard
-          label="À Surveiller"
+          label={t("monitored")}
           value={String(monitorCount)}
           icon={<TriangleAlert className="h-5 w-5 text-halal-debated" />}
           valueClass="text-halal-debated"
@@ -205,7 +194,7 @@ export function WatchlistView({
       <section className="mt-10 rounded-2xl border border-white/[0.05] bg-[#1a1c1a] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-lg font-bold">
-            Alertes configurées
+            {t("configuredAlerts")}
             <Info className="h-4 w-4 text-[#8f8878]" aria-hidden />
           </h2>
           <button
@@ -213,24 +202,24 @@ export function WatchlistView({
             onClick={() => setWatchlistModalOpen(true)}
             className="text-sm font-semibold text-[#c9a84c] hover:text-[#e6c364]"
           >
-            + Ajouter une alerte
+            + {t("addAlert")}
           </button>
         </div>
 
         {pausedAlerts.length > 0 && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-halal-debated/30 bg-halal-debated/[0.06] px-4 py-3 text-sm">
             <p className="text-[#e8d9b0]">
-              Vos alertes {pausedAlerts.join(" et ")} sont configurées mais les emails correspondants sont désactivés dans vos paramètres.
+              {t("pausedAlertsMessage").replace("{types}", pausedAlerts.join(language === "en" ? " and " : " et "))}
             </p>
             <Link href="/settings/notifications" className="font-semibold text-[#e6c364] hover:underline">
-              Activer les emails
+              {t("enableEmails")}
             </Link>
           </div>
         )}
 
         {alerts.length === 0 ? (
           <p className="mt-6 text-sm text-[#8f8878]">
-            Aucune alerte configurée pour le moment.
+            {t("noConfiguredAlerts")}
           </p>
         ) : (
           <ul className="mt-5 divide-y divide-white/[0.05]">
@@ -238,6 +227,7 @@ export function WatchlistView({
               <AlertRow
                 key={alert.id}
                 alert={alert}
+                currency={items.find((item) => item.ticker === alert.ticker)?.currency ?? null}
                 onToggle={(active) => void toggleAlert(alert.id, active)}
               />
             ))}
@@ -321,6 +311,7 @@ function WatchlistCard({
   onDelete: () => void;
   onAddToPortfolio: () => void;
 }) {
+  const { t, language } = useI18n();
   const positive = (item.changePercent ?? 0) >= 0;
   const initials = item.ticker.slice(0, 2).toUpperCase();
 
@@ -339,16 +330,16 @@ function WatchlistCard({
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${halalStatusBadgeClass(item.halalStatus)}`}
         >
-          {halalStatusLabel(item.halalStatus)}
+          {halalStatusText(item.halalStatus, t)}
         </span>
       </div>
 
       <div className="mt-5 flex items-end justify-between gap-4">
         <div>
           {item.price != null ? (
-            <p className="text-2xl font-bold">{euro.format(item.price)}</p>
+            <p className="text-2xl font-bold">{formatQuoteAmount(item.price, item.currency)}</p>
           ) : (
-            <p className="text-lg text-[#8f8878]">Prix indisponible</p>
+            <p className="text-lg text-[#8f8878]">{t("unavailable")}</p>
           )}
           {item.changePercent != null && item.change != null && (
             <p
@@ -360,8 +351,8 @@ function WatchlistCard({
                 <TrendingDown className="h-4 w-4" />
               )}
               {positive ? "+" : ""}
-              {pct.format(item.changePercent)} % ({positive ? "+" : ""}
-              {euro.format(item.change)})
+              {new Intl.NumberFormat(language === "en" ? "en-US" : "fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(item.changePercent)} % ({positive ? "+" : ""}
+              {formatQuoteAmount(item.change, item.currency)})
             </p>
           )}
         </div>
@@ -372,13 +363,17 @@ function WatchlistCard({
 
       <div className="mt-5 flex items-center justify-between border-t border-white/[0.05] pt-4">
         <p className="text-xs text-[#8f8878]">
-          Ajouté le {dateFmt.format(new Date(item.addedAt))}
+          {t("addedOn")} {new Intl.DateTimeFormat(language === "en" ? "en-US" : "fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }).format(new Date(item.addedAt))}
         </p>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onDelete}
-            aria-label={`Retirer ${item.name} de la watchlist`}
+            aria-label={`${t("removeFromWatchlist")} ${item.name}`}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#344038] text-[rgba(255,255,255,0.6)] hover:border-red-500/40 hover:text-halal-nonCompliant"
           >
             <Trash2 className="h-4 w-4" />
@@ -386,7 +381,7 @@ function WatchlistCard({
           <button
             type="button"
             onClick={onAddToPortfolio}
-            aria-label={`Ajouter ${item.name} au portefeuille`}
+            aria-label={`${t("addToPortfolio")} ${item.name}`}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#c9a84c]/40 text-[#c9a84c] hover:bg-[#c9a84c]/10"
           >
             <Plus className="h-4 w-4" />
@@ -395,6 +390,19 @@ function WatchlistCard({
       </div>
     </article>
   );
+}
+
+function halalStatusText(
+  status: HalalStatus,
+  t: (key: "statusCompliant" | "statusDoubtful" | "statusNonCompliant" | "notAnalyzed") => string,
+) {
+  return status === "compliant"
+    ? t("statusCompliant")
+    : status === "debated"
+      ? t("statusDoubtful")
+      : status === "non_compliant"
+        ? t("statusNonCompliant")
+        : t("notAnalyzed");
 }
 
 function Sparkline({
@@ -437,17 +445,20 @@ function Sparkline({
 
 function AlertRow({
   alert,
+  currency,
   onToggle,
 }: {
   alert: WatchlistAlert;
+  currency: string | null;
   onToggle: (active: boolean) => void;
 }) {
+  const { t } = useI18n();
   const description =
     alert.alertType === "halal_change"
-      ? "Changement du statut Halal"
+      ? t("halalStatusAlert")
       : alert.priceTarget != null
-        ? `Prix inférieur à ${euro.format(alert.priceTarget)}`
-        : "Alerte prix";
+        ? `${t("priceAlert")} < ${formatQuoteAmount(alert.priceTarget, currency)}`
+        : t("priceAlert");
 
   return (
     <li className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
@@ -464,7 +475,7 @@ function AlertRow({
         type="button"
         role="switch"
         aria-checked={alert.isActive}
-        aria-label={`Activer l'alerte pour ${alert.name}`}
+        aria-label={t("activeAlertFor").replace("{name}", alert.name)}
         onClick={() => onToggle(!alert.isActive)}
         className={`relative flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${alert.isActive ? "bg-[#c9a84c]" : "bg-[#344038]"}`}
       >
@@ -477,12 +488,13 @@ function AlertRow({
 }
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#344038] bg-[#1a1c1a]/50 px-6 py-16 text-center">
       <Binoculars className="h-12 w-12 text-[#c9a84c]" />
-      <h2 className="mt-5 text-xl font-bold">Votre watchlist est vide</h2>
+      <h2 className="mt-5 text-xl font-bold">{t("watchlistEmpty")}</h2>
       <p className="mt-2 max-w-sm text-sm text-[rgba(255,255,255,0.6)]">
-        Ajoutez des actifs halal à surveiller avant d&apos;investir
+        {t("watchlistSubtitle")}
       </p>
       <button
         type="button"
@@ -490,7 +502,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg bg-[#c9a84c] px-5 text-sm font-bold text-[#111412] hover:bg-[#e6c364]"
       >
         <Plus className="h-4 w-4" />
-        Ajouter un actif
+        {t("addAsset")}
       </button>
     </div>
   );

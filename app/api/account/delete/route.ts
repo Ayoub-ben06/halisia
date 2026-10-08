@@ -42,6 +42,10 @@ export async function POST() {
     "compliance_changes",
     "zakat_payments",
     "user_preferences",
+    "user_profiles",
+    "zakat_profile",
+    "premium_waitlist",
+    "subscriptions",
   ]) {
     const { error } = await admin.from(table).delete().eq("user_id", user.id);
     // A missing table (migration not applied yet) is not a failure.

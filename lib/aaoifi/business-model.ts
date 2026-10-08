@@ -22,6 +22,15 @@ export const BUSINESS_MODEL_DOUBTFUL: Record<string, string> = {
   NOW: "Modèle économique SaaS avec revenus différés significatifs — classification en cours de révision par notre équipe d'analyse",
   PEP: "Services financiers intégrés",
   ADI: "Revenus de licences semiconducteurs incluent des composantes financières — classification en cours de révision par notre équipe d'analyse",
+  SFM: "Sprouts Farmers Market — vente d'alcool et de porc à quantifier dans les revenus",
+  NFLX: "Netflix — contenu de divertissement incluant des éléments contraires à l'éthique islamique",
+  SPOT: "Spotify — plateforme de streaming musical, secteur musique classé interdit selon certains scholars AAOIFI",
+  PLTR: "Palantir — contrats de défense significatifs, part exacte à vérifier",
+  COST: "Costco — vente d'alcool en magasin représente une part des revenus à vérifier",
+  "RIO.L": "Rio Tinto — revenus d'intérêts et pratiques financières à vérifier",
+  "XRO.AX": "Xero — logiciel comptable, classification à investiguer selon les derniers rapports Musaffa",
+  "1810.HK": "Xiaomi — revenus gaming et divertissement dans un écosystème mixte",
+  "0941.HK": "China Mobile — services de divertissement et jeux intégrés à l'écosystème",
   "0700.HK": "Jeux vidéo, musique (Tencent Music) et services financiers (WeChat Pay, crédit) : part de revenus douteux significative",
   "7974.T": "Jeux vidéo : contenus dont la licéité fait débat entre scholars",
   "RELIANCE.NS": "Médias et divertissement (JioStar) au sein du groupe — classification en cours de révision par notre équipe d'analyse",
@@ -30,6 +39,33 @@ export const BUSINESS_MODEL_DOUBTFUL: Record<string, string> = {
   "NESN.SW": "Certaines gammes de produits peuvent contenir des ingrédients douteux — classification en cours de révision par notre équipe d'analyse",
   "ULVR.L": "Certaines gammes de produits peuvent contenir des ingrédients douteux — classification en cours de révision par notre équipe d'analyse",
   "WES.AX": "Activités de distribution diversifiées — classification en cours de révision par notre équipe d'analyse",
+};
+
+export const ALWAYS_NON_COMPLIANT: Record<string, string> = {
+  MCD: "McDonald's vend du porc dans la majorité de ses restaurants — activité haram directe selon AAOIFI",
+  YUM: "Yum Brands (KFC, Pizza Hut, Taco Bell) — vente de porc et alcool dans les établissements",
+  CMG: "Chipotle — vente de porc (carnitas)",
+  UBER: "Uber Eats génère des revenus significatifs via la livraison d'alcool — activité haram selon AAOIFI",
+  DASH: "DoorDash — livraison d'alcool représentant une part significative du GMV",
+  EA: "Electronic Arts — secteur des jeux vidéo classé divertissement interdit selon certains scholars AAOIFI",
+  TTWO: "Take-Two Interactive — secteur des jeux vidéo classé divertissement interdit selon certains scholars AAOIFI",
+  RBLX: "Roblox — plateforme de jeux classée divertissement",
+  DIS: "Walt Disney — alcool, divertissement et ESPN avec paris sportifs dans le groupe",
+  CMCSA: "Comcast/NBCUniversal — médias et divertissement",
+  WBD: "Warner Bros Discovery — médias et divertissement",
+  PARA: "Paramount — médias et divertissement",
+  IGT: "IGT — machines à sous et jeux de hasard",
+  "CFR.SW": "Richemont — activités de filiales liées à l'alcool à vérifier comme activité interdite",
+};
+
+const INVESTIGATION_REASONS: Record<string, string> = {
+  MSFT: "Azure héberge des secteurs controversés ; vérifier la matérialité des revenus concernés",
+  ORCL: "Vérifier l'exposition aux services fournis aux banques et assureurs conventionnels",
+  INTU: "Vérifier la part des services financiers dans TurboTax et QuickBooks",
+  "RACE": "Vérifier les revenus de sponsoring alcoolisé et les services financiers Ferrari",
+  DELL: "Vérifier les contrats de défense et les revenus de financement clients",
+  DLR: "Vérifier la dette et les contrats de location immobilière",
+  ANET: "Vérifier les contrats de défense et les revenus de financement clients",
 };
 
 // Diversified aerospace groups whose activity code (e.g. "Aircraft",
@@ -122,4 +158,12 @@ export const BUSINESS_MODEL_DOUBTFUL_NOTE = "Les ratios financiers sont conforme
 
 export function getBusinessModelDoubt(ticker: string): string | undefined {
   return lookup(BUSINESS_MODEL_DOUBTFUL, ticker);
+}
+
+export function getAlwaysNonCompliant(ticker: string): string | undefined {
+  return lookup(ALWAYS_NON_COMPLIANT, ticker);
+}
+
+export function getNeedsInvestigation(ticker: string): string | undefined {
+  return lookup(INVESTIGATION_REASONS, ticker);
 }

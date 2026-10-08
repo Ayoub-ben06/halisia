@@ -2,9 +2,9 @@ import { PublicFeatureShell } from "@/components/layout/PublicFeatureShell";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { ZakatView, type ZakatAsset, type ZakatPayment } from "@/components/dashboard/zakat-view";
 import { createClient } from "@/lib/supabase/server";
-import { fetchYahooPrices } from "@/lib/yahoo-prices";
+import { fetchYahooPrices, priceAssetsFor, priceKeyOf } from "@/lib/yahoo-prices";
 import { getLivePrices } from "@/lib/live-prices";
-import { assetHalalStatus, getTickerScreenings, normalizeTicker } from "@/lib/halal-screening";
+import { assetHalalStatus, getTickerScreenings, isStockAssetType, normalizeTicker, screeningTickerForAsset } from "@/lib/halal-screening";
 import { estimateDividendsReceived } from "@/lib/aaoifi/dividends";
 import { calculatePurification } from "@/lib/aaoifi/purification";
 import { displaySettings, GOLD_NISAB_GRAMS, nisabBasisOf, SILVER_NISAB_GRAMS } from "@/lib/user-preferences";
@@ -39,31 +39,35 @@ export default async function ZakatPage({
   const nisabBasis = nisabBasisOf(user);
   const nisab = nisabBasis === "silver" ? silverPerGram * SILVER_NISAB_GRAMS : goldPerGram * GOLD_NISAB_GRAMS;
   let rows: ZakatAsset[] = [];
+  let firstInvestmentDate: string | undefined;
 
   if (user) {
-    const [assetsResult, cryptoResult, goldResult] = await Promise.all([
+    const [assetsResult, cryptoResult, goldResult, transactionsResult] = await Promise.all([
       supabase.from("assets").select("*").eq("user_id", user.id),
       supabase.from("crypto_assets").select("*").eq("user_id", user.id),
       supabase.from("gold_assets").select("*").eq("user_id", user.id),
+      supabase.from("transactions").select("transaction_date, asset_class, side").eq("user_id", user.id).eq("side", "buy").in("asset_class", ["stock", "etf"]).order("transaction_date", { ascending: true }).limit(1).maybeSingle(),
     ]);
     const loadError = assetsResult.error ?? cryptoResult.error ?? goldResult.error;
     if (loadError) throw new Error(`Impossible de calculer la Zakat : ${loadError.message}`);
     const assets = assetsResult.data ?? [];
     const [yahoo, screenings] = await Promise.all([
-      fetchYahooPrices(assets.filter((asset) => asset.isin).map((asset) => ({ isin: asset.isin!, ticker: asset.ticker, name: asset.name, currency: asset.currency }))),
-      getTickerScreenings(assets.filter((asset) => asset.type === "stock" && asset.ticker).map((asset) => asset.ticker!)),
+      fetchYahooPrices(priceAssetsFor(assets)),
+      getTickerScreenings(assets.filter((asset) => isStockAssetType(asset.type)).map((asset) => screeningTickerForAsset(asset)).filter((ticker): ticker is string => Boolean(ticker))),
     ]);
+    firstInvestmentDate = transactionsResult.data?.transaction_date?.slice(0, 10) ?? assets.map((asset) => asset.purchase_date ?? asset.created_at.slice(0, 10)).filter(Boolean).sort()[0];
     rows = [
       ...(await Promise.all(assets.map(async (asset) => {
         const status = assetHalalStatus(asset, screenings);
-        const ratio = asset.type === "stock" && asset.ticker && status !== "non_compliant" ? screenings[normalizeTicker(asset.ticker)]?.purificationRatio ?? 0 : 0;
-        const dividends = ratio > 0 ? await estimateDividendsReceived(normalizeTicker(asset.ticker!), Number(asset.quantity), asset.purchase_date) : 0;
+        const screeningTicker = screeningTickerForAsset(asset);
+        const ratio = isStockAssetType(asset.type) && screeningTicker && status !== "non_compliant" ? screenings[normalizeTicker(screeningTicker)]?.purificationRatio ?? 0 : 0;
+        const dividends = ratio > 0 && screeningTicker ? await estimateDividendsReceived(screeningTicker, Number(asset.quantity), asset.purchase_date) : 0;
         const category: ZakatAsset["category"] = asset.type === "etf" ? "ETF islamique" : asset.type === "crypto" ? "Crypto" : asset.type === "gold" ? "Or" : asset.type === "cash" ? "Cash" : status === "compliant" ? "Actions conformes" : "Actions à vérifier";
         return {
           id: asset.id,
           name: asset.name,
           category,
-          value: Number(asset.quantity) * ((asset.isin ? yahoo[asset.isin] : null) ?? Number(asset.current_price ?? asset.average_buy_price)),
+          value: Number(asset.quantity) * ((priceKeyOf(asset) ? yahoo[priceKeyOf(asset)!] : null) ?? Number(asset.current_price ?? asset.average_buy_price)),
           status,
           purchaseDate: asset.purchase_date ?? asset.created_at.slice(0, 10),
           illicitRatio: ratio * 100,
@@ -84,6 +88,7 @@ export default async function ZakatPage({
       silverPricePerGram={silverPerGram}
       initialPaymentDate={preferences?.zakat_payment_date ?? zakatProfile?.paymentDate ?? ""}
       initialPayments={(paymentsResult.data ?? []) as ZakatPayment[]}
+      firstInvestmentDate={user ? firstInvestmentDate : undefined}
       isAuthenticated={Boolean(user)}
       displayCurrency={display.currency}
       displayRate={display.rate}

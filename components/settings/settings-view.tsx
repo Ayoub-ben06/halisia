@@ -28,11 +28,15 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useI18n } from "@/components/providers/i18n-provider";
+import type { AppLanguage } from "@/lib/i18n";
 
 export type PreferenceSettings = {
-  language: "fr" | "en" | "ar";
-  currency: "EUR" | "USD" | "GBP";
-  madhhab: "aaoifi" | "hanafi" | "shafii";
+  language: AppLanguage;
+  currency: "EUR" | "USD" | "GBP" | "MAD" | "DZD" | "TND";
+  nisabType: "gold" | "silver";
+  fiscalYearStart: "january" | "july";
+  bitcoinZakatable: boolean;
 };
 
 export type ZakatProfile = {
@@ -52,10 +56,15 @@ export type SettingsProfile = {
   dailySummaryEnabled: boolean;
   priceAlertsEnabled: boolean;
   complianceAlertsEnabled: boolean;
+  halalChangeAlert: boolean;
+  purificationAlert: boolean;
+  weeklyComplianceReport: boolean;
   annualZakatReminderEnabled: boolean;
+  zakatReminder: boolean;
   zakatPaymentDate: string | null;
   preferences: PreferenceSettings;
   zakat: ZakatProfile;
+  waitlisted: boolean;
 };
 
 const sections = [
@@ -83,16 +92,16 @@ export function SettingsView({
   initialSection?: SectionId;
   unsubscribeStatus?: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [section, setSection] = useState<SectionId>(initialSection);
   const [toast, setToast] = useState("");
   const [errorToast, setErrorToast] = useState("");
 
-  // Retour du lien « Se désabonner » présent dans l'email quotidien.
   useEffect(() => {
-    if (unsubscribeStatus === "ok") setToast("Rapport de clôture désactivé");
-    else if (unsubscribeStatus) setErrorToast("Ce lien de désabonnement n’est plus valide");
-  }, [unsubscribeStatus]);
+    if (unsubscribeStatus === "ok") setToast(t("settingsDailySummaryDisabled"));
+    else if (unsubscribeStatus) setErrorToast(t("settingsUnsubscribeInvalid"));
+  }, [unsubscribeStatus, t]);
 
   function showToast(message: string) {
     setErrorToast("");
@@ -109,26 +118,27 @@ export function SettingsView({
   return (
     <div className="mx-auto max-w-[1280px] p-4 text-[#ffffff] sm:p-8">
       <header>
-        <h1 className="text-3xl font-bold">Paramètres</h1>
+        <h1 className="text-3xl font-bold">{t("settings")}</h1>
         <p className="mt-2 text-sm text-[#a9a291]">
-          Gérez votre compte, vos préférences et votre profil Zakat.
+          {t("settingsDescription")}
         </p>
       </header>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:items-start">
         <nav
-          aria-label="Sections des paramètres"
+          aria-label={t("settingsSectionsNav")}
           className="flex gap-1 overflow-x-auto rounded-2xl border border-white/[0.05] bg-[#1a1c1a] p-2 lg:sticky lg:top-24 lg:flex-col lg:gap-1 lg:p-3"
         >
-          {sections.map(({ id, label, icon: Icon }) => {
+          {sections.map(({ id, icon: Icon }) => {
             const active = section === id;
+            const translatedLabel = id === "profil" ? t("profile") : id === "abonnement" ? t("subscription") : id === "notifications" ? t("notifications") : id === "securite" ? t("security") : t("preferences");
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => {
                   setSection(id);
-                  window.history.replaceState(null, "", `/settings/${id}`);
+                  router.replace(`/settings?tab=${id}`, { scroll: false });
                 }}
                 aria-current={active ? "page" : undefined}
                 className={`flex shrink-0 items-center gap-3 whitespace-nowrap rounded-xl border-l-2 px-4 py-3 text-sm font-semibold transition-colors ${
@@ -138,7 +148,7 @@ export function SettingsView({
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                {label}
+                {translatedLabel}
               </button>
             );
           })}
@@ -152,13 +162,17 @@ export function SettingsView({
               onError={showError}
             />
           )}
-          {section === "abonnement" && <SubscriptionSection />}
+          {section === "abonnement" && <SubscriptionSection userId={profile.userId} email={profile.email} initiallyWaitlisted={profile.waitlisted} onSuccess={showToast} onError={showError} />}
           {section === "notifications" && (
             <NotificationsSection
               userId={profile.userId}
               initialDailySummaryEnabled={profile.dailySummaryEnabled}
               initialPriceAlertsEnabled={profile.priceAlertsEnabled}
               initialComplianceAlertsEnabled={profile.complianceAlertsEnabled}
+              initialHalalChangeAlert={profile.halalChangeAlert}
+              initialPurificationAlert={profile.purificationAlert}
+              initialWeeklyComplianceReport={profile.weeklyComplianceReport}
+              initialZakatReminder={profile.zakatReminder}
               initialAnnualZakatReminderEnabled={
                 profile.annualZakatReminderEnabled
               }
@@ -169,6 +183,7 @@ export function SettingsView({
           )}
           {section === "securite" && (
             <SecuritySection
+              email={profile.email}
               createdAt={profile.createdAt}
               onSuccess={showToast}
               onError={showError}
@@ -206,6 +221,7 @@ function ProfileSection({
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
   const [firstName, setFirstName] = useState(profile.firstName);
@@ -227,19 +243,13 @@ function ProfileSection({
   async function handleSave() {
     setSaving(true);
     try {
-      const { error } = await createClient().auth.updateUser({
-        data: {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone: phone.trim(),
-          avatar_url: avatarUrl,
-        },
-      });
+      const supabase = createClient();
+      const { error } = await supabase.from("user_profiles").upsert({ id: profile.userId, first_name: firstName.trim(), last_name: lastName.trim(), phone: phone.trim() || null, avatar_url: avatarUrl || null, updated_at: new Date().toISOString() });
       if (error) throw error;
-      onSuccess("Informations enregistrées");
+      onSuccess(t("settingsInfoSaved"));
       router.refresh();
     } catch {
-      onError("Impossible d’enregistrer vos informations");
+      onError(t("settingsInfoSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -248,14 +258,22 @@ function ProfileSection({
   async function handleAvatar(file: File | undefined) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      onError("Choisissez un fichier image");
+      onError(t("settingsChooseImageFile"));
       return;
     }
     try {
-      setAvatarUrl(await downscaleImage(file));
-      onSuccess("Photo prête — enregistrez pour la conserver");
+      const supabase = createClient();
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${profile.userId}/avatar-${Date.now()}.${extension}`;
+      const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const { error: profileError } = await supabase.from("user_profiles").upsert({ id: profile.userId, avatar_url: data.publicUrl, updated_at: new Date().toISOString() });
+      if (profileError) throw profileError;
+      setAvatarUrl(data.publicUrl);
+      onSuccess(t("settingsPhotoUpdated"));
     } catch {
-      onError("Impossible de lire cette image");
+      onError(t("settingsImageReadFailed"));
     }
   }
 
@@ -263,8 +281,8 @@ function ProfileSection({
     <>
       <Panel>
         <PanelHeader
-          title="Informations personnelles"
-          description="Mettez à jour vos informations de contact et votre identité."
+          title={t("personalInfo")}
+          description={t("personalInfoDescription")}
         />
 
         <div className="flex flex-wrap items-center gap-5 border-b border-white/[0.05] pb-7">
@@ -283,7 +301,7 @@ function ProfileSection({
           <div className="min-w-0">
             <p className="text-lg font-bold">{displayName}</p>
             <p className="mt-1 text-sm text-[#a9a291]">
-              Photo de profil du compte Halisia
+              {t("profilePhoto")}
             </p>
             <input
               ref={fileInput}
@@ -301,31 +319,31 @@ function ProfileSection({
               className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-[#e6c364] hover:underline"
             >
               <Camera className="h-4 w-4" />
-              Modifier la photo
+              {t("changePhoto")}
             </button>
           </div>
         </div>
 
         <div className="grid gap-5 pt-7 sm:grid-cols-2">
-          <Field label="Prénom">
+          <Field label={t("firstName")}>
             <FormInput
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
-              placeholder="Prénom"
+              placeholder={t("firstName")}
               autoComplete="given-name"
             />
           </Field>
-          <Field label="Nom">
+          <Field label={t("lastName")}>
             <FormInput
               value={lastName}
               onChange={(event) => setLastName(event.target.value)}
-              placeholder="Nom"
+              placeholder={t("lastName")}
               autoComplete="family-name"
             />
           </Field>
           <Field
-            label="Email"
-            hint="Non modifiable sans vérification sécurisée préalable."
+            label={t("authEmail")}
+            hint={t("settingsEmailHint")}
           >
             <FormInput
               value={profile.email}
@@ -334,7 +352,7 @@ function ProfileSection({
               className="text-[#a9a291]"
             />
           </Field>
-          <Field label="Téléphone (optionnel)">
+          <Field label={t("optionalPhone")}>
             <FormInput
               type="tel"
               value={phone}
@@ -353,7 +371,7 @@ function ProfileSection({
             onClick={() => void handleSave()}
             className="font-bold"
           >
-            {saving ? "Enregistrement…" : "Sauvegarder les modifications"}
+            {saving ? t("saving") : t("saveChanges")}
           </Button>
         </div>
       </Panel>
@@ -365,11 +383,10 @@ function ProfileSection({
           <div className="min-w-0">
             <p className="flex items-center gap-2 font-bold text-halal-nonCompliant">
               <TriangleAlert className="h-4 w-4" />
-              Zone de danger
+              {t("settingsDangerZone")}
             </p>
             <p className="mt-2 max-w-lg text-sm leading-6 text-[#a9a291]">
-              La suppression de votre compte est irréversible. Toutes vos
-              données seront effacées.
+              {t("settingsDeleteAccountWarning")}
             </p>
           </div>
           <button
@@ -377,7 +394,7 @@ function ProfileSection({
             onClick={() => setDeleteOpen(true)}
             className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-halal-nonCompliant/50 px-5 text-sm font-semibold text-halal-nonCompliant transition-colors hover:bg-halal-nonCompliant/10"
           >
-            Supprimer mon compte
+            {t("settingsDeleteAccount")}
           </button>
         </div>
       </section>
@@ -392,6 +409,7 @@ function ProfileSection({
 }
 
 function ZakatProfileCard({ zakat }: { zakat: ZakatProfile }) {
+  const { t } = useI18n();
   return (
     <section className="rounded-2xl border border-white/[0.05] border-l-2 border-l-[#c9a84c] bg-[#1a1c1a] p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-5">
@@ -408,17 +426,15 @@ function ZakatProfileCard({ zakat }: { zakat: ZakatProfile }) {
             ) : (
               <TriangleAlert className="h-3.5 w-3.5" />
             )}
-            {zakat
-              ? "Votre profil Zakat est configuré"
-              : "Votre profil Zakat n’est pas configuré"}
+            {zakat ? t("zakatReady") : t("settingsZakatNotConfigured")}
           </span>
           <p className="mt-3 text-lg font-bold">
-            Configuration Zakat &amp; Purification
+            {t("settingsZakatConfigTitle")}
           </p>
           <p className="mt-2 text-sm text-[#a9a291]">
             {zakat ? (
               <>
-                Hawl depuis :{" "}
+                {t("settingsZakatHawlSince")}{" "}
                 <strong className="text-[#ffffff]">
                   {formatDate(zakat.startDate)}
                 </strong>{" "}
@@ -430,9 +446,9 @@ function ZakatProfileCard({ zakat }: { zakat: ZakatProfile }) {
                       : "text-[#8f8878]"
                   }
                 >
-                  {zakat.includeBitcoin ? "inclus" : "exclu"}
+                  {zakat.includeBitcoin ? t("settingsZakatBitcoinIncluded") : t("settingsZakatBitcoinExcluded")}
                 </span>{" "}
-                • Revenus :{" "}
+                • {t("settingsZakatIncome")}{" "}
                 <span
                   className={
                     zakat.includeIncome
@@ -440,11 +456,11 @@ function ZakatProfileCard({ zakat }: { zakat: ZakatProfile }) {
                       : "text-[#8f8878]"
                   }
                 >
-                  {zakat.includeIncome ? "inclus" : "exclus"}
+                  {zakat.includeIncome ? t("settingsZakatBitcoinIncluded") : t("settingsZakatBitcoinExcluded")}
                 </span>
               </>
             ) : (
-              "Renseignez votre Hawl et vos choix de jurisprudence pour affiner le calcul."
+              t("settingsZakatSetupHint")
             )}
           </p>
         </div>
@@ -453,7 +469,7 @@ function ZakatProfileCard({ zakat }: { zakat: ZakatProfile }) {
           className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#9a8035] px-5 text-sm font-semibold text-[#e6c364] transition-colors hover:bg-[#c9a84c]/10"
         >
           <SlidersHorizontal className="h-4 w-4" />
-          {zakat ? "Modifier mon profil Zakat" : "Configurer mon profil Zakat"}
+          {zakat ? t("settingsEditZakatProfile") : t("settingsConfigureZakatProfile")}
         </Link>
       </div>
     </section>
@@ -469,9 +485,11 @@ function DeleteAccountDialog({
   onOpenChange: (open: boolean) => void;
   onError: (message: string) => void;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [confirmation, setConfirmation] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const confirmWord = t("settingsDeleteConfirmWord");
 
   async function handleDelete() {
     setDeleting(true);
@@ -484,7 +502,7 @@ function DeleteAccountDialog({
     } catch {
       setDeleting(false);
       onOpenChange(false);
-      onError("La suppression du compte a échoué");
+      onError(t("settingsDeleteAccountFailed"));
     }
   }
 
@@ -500,21 +518,19 @@ function DeleteAccountDialog({
       <DialogContent className="border-white/[0.05] bg-[#1a1c1a] p-6 text-[#ffffff] sm:max-w-[460px] sm:rounded-2xl sm:p-8">
         <DialogTitle className="flex items-center gap-2 text-xl font-bold text-halal-nonCompliant">
           <TriangleAlert className="h-5 w-5" />
-          Supprimer mon compte
+          {t("settingsDeleteAccountTitle")}
         </DialogTitle>
         <DialogDescription className="mt-3 text-sm leading-6 text-[#a9a291]">
-          Cette action est irréversible. Votre portefeuille, votre watchlist et
-          votre historique seront définitivement effacés.
+          {t("settingsDeleteAccountDesc")}
         </DialogDescription>
         <label className="mt-6 block">
           <span className="text-sm text-[rgba(255,255,255,0.6)]">
-            Tapez <strong className="text-[#ffffff]">SUPPRIMER</strong> pour
-            confirmer
+            {t("settingsDeleteConfirmPrompt").replace("{word}", confirmWord)}
           </span>
           <FormInput
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
-            placeholder="SUPPRIMER"
+            placeholder={confirmWord}
             className="mt-2"
           />
         </label>
@@ -525,15 +541,15 @@ function DeleteAccountDialog({
             onClick={() => onOpenChange(false)}
             className="inline-flex h-11 items-center justify-center rounded-lg border border-[#344038] px-5 text-sm font-semibold text-[#a9a291] hover:bg-white/5"
           >
-            Annuler
+            {t("cancel")}
           </button>
           <button
             type="button"
-            disabled={confirmation !== "SUPPRIMER" || deleting}
+            disabled={confirmation !== confirmWord || deleting}
             onClick={() => void handleDelete()}
             className="inline-flex h-11 items-center justify-center rounded-lg bg-halal-nonCompliant px-5 text-sm font-bold text-[#ffffff] transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-50"
           >
-            {deleting ? "Suppression…" : "Supprimer définitivement"}
+            {deleting ? t("settingsDeleting") : t("settingsDeletePermanently")}
           </button>
         </div>
       </DialogContent>
@@ -543,32 +559,43 @@ function DeleteAccountDialog({
 
 /* --------------------------------------------------------- Abonnement -- */
 
-const planFeatures = [
-  "Screening Shariah des actions de 15 marchés",
-  "Calcul de la Zakat et purification des dividendes",
-  "Watchlist et alertes de conformité",
-  "Historique et export du portefeuille",
-];
-
-function SubscriptionSection() {
+function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, onError }: { userId: string; email: string; initiallyWaitlisted: boolean; onSuccess: (message: string) => void; onError: (message: string) => void }) {
+  const { t } = useI18n();
+  const planFeatures = [
+    t("settingsPlanFeature1"),
+    t("settingsPlanFeature2"),
+    t("settingsPlanFeature3"),
+    t("settingsPlanFeature4"),
+  ];
+  const [waitlisted, setWaitlisted] = useState(initiallyWaitlisted);
+  const [saving, setSaving] = useState(false);
+  async function joinWaitlist() {
+    setSaving(true);
+    try {
+      const { error } = await createClient().from("premium_waitlist").upsert({ email, user_id: userId }, { onConflict: "email" });
+      if (error) throw error;
+      setWaitlisted(true);
+      onSuccess(t("settingsWaitlistSuccess"));
+    } catch { onError(t("settingsWaitlistFailed")); } finally { setSaving(false); }
+  }
   return (
     <Panel>
       <PanelHeader
-        title="Votre formule"
-        description="Halisia est gratuit pendant la phase de lancement."
+        title={t("settingsYourPlan")}
+        description={t("settingsFreeLaunchDescription")}
       />
       <div className="rounded-xl border border-[#9a8035]/40 bg-[#c9a84c]/[0.07] p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-[#c9a84c]/10 px-3 py-1 text-xs font-semibold text-[#e6c364]">
               <Sparkles className="h-3.5 w-3.5" />
-              Formule active
+              {t("activePlan")}
             </span>
             <p className="mt-3 text-2xl font-bold text-[#e6c364]">
-              Accès lancement
+              {t("launchAccess")}
             </p>
             <p className="mt-1 text-sm text-[#a9a291]">
-              Toutes les fonctionnalités incluses • Aucun moyen de paiement enregistré
+              {t("settingsAllFeaturesIncluded")}
             </p>
           </div>
           <p className="text-right">
@@ -588,33 +615,29 @@ function SubscriptionSection() {
         </ul>
       </div>
       <p className="mt-6 text-sm leading-6 text-[#a9a291]">
-        L’offre Premium ouvrira prochainement. Vous serez prévenu à l’avance et aucune somme ne sera prélevée sans votre accord.{" "}
-        <Link href="/tarifs" className="font-semibold text-[#e6c364] hover:underline">Voir les tarifs prévus</Link>
+        {t("settingsPremiumOpeningSoon")}{" "}
+        <Link href="/tarifs" className="font-semibold text-[#e6c364] hover:underline">{t("settingsViewPlannedPricing")}</Link>
       </p>
+      <div className="mt-7 rounded-xl border border-[#c9a84c]/30 bg-[#151b18] p-5">
+        <p className="font-semibold">{t("settingsOfficialPremiumSoon")}</p>
+        <p className="mt-1 text-sm text-[#a9a291]">9,99 €/mois ou 79 €/an</p>
+        {waitlisted ? <p className="mt-4 text-sm font-semibold text-halal-compliant">✅ {t("settingsOnPriorityList")}</p> : <Button type="button" disabled={saving} onClick={() => void joinWaitlist()} className="mt-4 font-bold">{saving ? t("settingsJoiningWaitlist") : t("settingsJoinPriorityList")}</Button>}
+      </div>
     </Panel>
   );
 }
 
 /* ------------------------------------------------------- Notifications -- */
 
-const upcomingNotifications = [
-  {
-    label: "Rapport mensuel",
-    description:
-      "Une synthèse mensuelle de la performance et de la conformité de votre portefeuille.",
-  },
-  {
-    label: "Newsletter Halisia",
-    description:
-      "Analyses et actualités de la finance islamique, deux fois par mois.",
-  },
-];
-
 function NotificationsSection({
   userId,
   initialDailySummaryEnabled,
   initialPriceAlertsEnabled,
   initialComplianceAlertsEnabled,
+  initialHalalChangeAlert,
+  initialPurificationAlert,
+  initialWeeklyComplianceReport,
+  initialZakatReminder,
   initialAnnualZakatReminderEnabled,
   hasZakatProfile,
   onSuccess,
@@ -624,16 +647,29 @@ function NotificationsSection({
   initialDailySummaryEnabled: boolean;
   initialPriceAlertsEnabled: boolean;
   initialComplianceAlertsEnabled: boolean;
+  initialHalalChangeAlert: boolean;
+  initialPurificationAlert: boolean;
+  initialWeeklyComplianceReport: boolean;
+  initialZakatReminder: boolean;
   initialAnnualZakatReminderEnabled: boolean;
   hasZakatProfile: boolean;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const upcomingNotifications = [
+    { label: t("settingsMonthlyReport"), description: t("settingsMonthlyReportDesc") },
+    { label: t("settingsNewsletter"), description: t("settingsNewsletterDesc") },
+  ];
   const [dailyEnabled, setDailyEnabled] = useState(initialDailySummaryEnabled);
   const [priceEnabled, setPriceEnabled] = useState(initialPriceAlertsEnabled);
   const [complianceEnabled, setComplianceEnabled] = useState(initialComplianceAlertsEnabled);
+  const [halalEnabled, setHalalEnabled] = useState(initialHalalChangeAlert);
+  const [purificationEnabled, setPurificationEnabled] = useState(initialPurificationAlert);
+  const [weeklyEnabled, setWeeklyEnabled] = useState(initialWeeklyComplianceReport);
   const [zakatEnabled, setZakatEnabled] = useState(
-    initialAnnualZakatReminderEnabled,
+    initialZakatReminder || initialAnnualZakatReminderEnabled,
   );
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -649,47 +685,50 @@ function NotificationsSection({
           { onConflict: "user_id" },
         );
       if (error) throw error;
-      onSuccess(
-        next
-          ? "Rapport de clôture activé ✅ — vous recevrez un email à la clôture du marché"
-          : "Rapport de clôture désactivé",
-      );
+      onSuccess(next ? t("settingsDailySummaryEnabled") : t("settingsDailySummaryDisabled"));
     } catch {
       setDailyEnabled(previous);
-      onError("Impossible d’enregistrer ce réglage");
+      onError(t("settingsSaveSettingFailed"));
     } finally {
       setSaving(null);
     }
   }
 
   async function togglePreference(
-    kind: "price" | "zakat" | "compliance",
+    kind: "price" | "zakat" | "compliance" | "halal" | "purification" | "weekly",
     next: boolean,
   ) {
     if (kind === "zakat" && next && !hasZakatProfile) {
-      onError("Configurez d’abord votre profil Zakat pour définir la date du Hawl");
+      onError(t("settingsConfigureZakatFirst"));
       return;
     }
 
     const settings = {
-      price: { value: priceEnabled, set: setPriceEnabled, column: "price_alerts_enabled", label: "Alertes de prix", suffix: "es" },
-      compliance: { value: complianceEnabled, set: setComplianceEnabled, column: "compliance_alerts_enabled", label: "Alertes de conformité", suffix: "es" },
-      zakat: { value: zakatEnabled, set: setZakatEnabled, column: "annual_zakat_reminder_enabled", label: "Rappel Zakat annuel", suffix: "" },
+      price: { value: priceEnabled, set: setPriceEnabled, column: "price_alerts_enabled", label: t("settingsPriceAlerts"), suffix: "es" },
+      compliance: { value: complianceEnabled, set: setComplianceEnabled, column: "compliance_alerts_enabled", label: t("settingsComplianceAlerts"), suffix: "es" },
+      zakat: { value: zakatEnabled, set: setZakatEnabled, column: "annual_zakat_reminder_enabled", label: t("settingsAnnualZakatReminder"), suffix: "" },
+      halal: { value: halalEnabled, set: setHalalEnabled, column: "halal_change_alert", label: t("settingsDowngradeAlerts"), suffix: "" },
+      purification: { value: purificationEnabled, set: setPurificationEnabled, column: "purification_alert", label: t("settingsPurificationAlerts"), suffix: "" },
+      weekly: { value: weeklyEnabled, set: setWeeklyEnabled, column: "weekly_compliance_report", label: t("settingsWeeklyReportShort"), suffix: "" },
     }[kind];
     const previous = settings.value;
     settings.set(next);
     setSaving(kind);
 
     try {
-      const { error } = await createClient()
-        .from("user_preferences")
-        .upsert({ user_id: userId, [settings.column]: next }, { onConflict: "user_id" });
+      const payload = { user_id: userId, [settings.column]: next, updated_at: new Date().toISOString(), ...(kind === "halal" ? { compliance_alerts_enabled: next } : {}), ...(kind === "zakat" ? { zakat_reminder: next } : {}) };
+      const { error } = await createClient().from("user_preferences").upsert(payload, { onConflict: "user_id" });
       if (error) throw error;
-      onSuccess(`${settings.label} ${next ? "activé" : "désactivé"}${settings.suffix}${next ? " ✅" : ""}`);
+      onSuccess(
+        (next ? t("settingsToggleEnabled") : t("settingsToggleDisabled"))
+          .replace("{label}", settings.label)
+          .replace("{suffix}", settings.suffix),
+      );
+      router.refresh();
     } catch (caught) {
       settings.set(previous);
-      const missingColumn = caught instanceof Error && /compliance_alerts_enabled/.test(caught.message);
-      onError(missingColumn ? "Réglage indisponible : la migration du 24/09/2026 (alertes de conformité) doit être appliquée" : "Impossible d’enregistrer ce réglage");
+      const missingColumn = caught instanceof Error && /compliance_alerts_enabled|halal_change_alert|purification_alert|weekly_compliance_report/.test(caught.message);
+      onError(missingColumn ? t("settingsMigrationRequired") : t("settingsSaveSettingFailed"));
     } finally {
       setSaving(null);
     }
@@ -698,28 +737,27 @@ function NotificationsSection({
   return (
     <Panel>
       <PanelHeader
-        title="Notifications"
-        description="Choisissez les informations que Halisia vous envoie par email."
+        title={t("notificationsTitle")}
+        description={t("notificationsDescription")}
       />
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-5 rounded-xl border border-white/[0.05] border-l-2 border-l-[#c9a84c] bg-[#151b18] p-5">
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 font-semibold">
-              Rapport de clôture du portefeuille
+              {t("settingsPortfolioClosingReport")}
               {dailyEnabled && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-halal-compliant/10 px-2.5 py-0.5 text-[10px] font-semibold text-halal-compliant">
                   <CheckCircle2 className="h-3 w-3" />
-                  Actif
+                  {t("settingsActive")}
                 </span>
               )}
             </p>
             <p className="mt-2 text-sm leading-5 text-[#a9a291]">
-              Un email à la clôture du marché : valeur de votre patrimoine,
-              performance du jour, score de conformité et Zakat estimée.
+              {t("settingsPortfolioClosingReportDesc")}
             </p>
           </div>
           <Switch
-            label="Rapport de clôture du portefeuille"
+            label={t("settingsPortfolioClosingReport")}
             checked={dailyEnabled}
             disabled={saving === "daily"}
             onChange={(checked) => void toggleDailySummary(checked)}
@@ -727,27 +765,43 @@ function NotificationsSection({
         </div>
 
         <NotificationToggleCard
-          label="Alertes de prix"
-          description="Soyez notifié lorsqu’un objectif de prix défini dans votre watchlist est atteint. Une alerte déclenchée est ensuite désactivée."
+          label={t("settingsPriceAlerts")}
+          description={t("settingsPriceAlertsDesc")}
           checked={priceEnabled}
           disabled={saving === "price"}
           onChange={(checked) => void togglePreference("price", checked)}
         />
 
         <NotificationToggleCard
-          label="Alertes de conformité"
-          description="Recevez un email dès qu’une action de votre watchlist change de statut Shariah (conforme, douteux, non conforme). S’applique aux actions pour lesquelles l’alerte « Changement du statut Halal » est active dans la watchlist."
-          checked={complianceEnabled}
-          disabled={saving === "compliance"}
-          onChange={(checked) => void togglePreference("compliance", checked)}
+          label={t("settingsComplianceAlerts")}
+          description={t("settingsComplianceAlertsDesc")}
+          checked={halalEnabled}
+          disabled={saving === "halal"}
+          onChange={(checked) => void togglePreference("halal", checked)}
         />
 
         <NotificationToggleCard
-          label="Rappel Zakat annuel"
+          label={t("settingsPurificationAlerts")}
+          description={t("settingsPurificationAlertsDesc")}
+          checked={purificationEnabled}
+          disabled={saving === "purification"}
+          onChange={(checked) => void togglePreference("purification", checked)}
+        />
+
+        <NotificationToggleCard
+          label={t("settingsWeeklyComplianceReport")}
+          description={t("settingsWeeklyComplianceReportDesc")}
+          checked={weeklyEnabled}
+          disabled={saving === "weekly"}
+          onChange={(checked) => void togglePreference("weekly", checked)}
+        />
+
+        <NotificationToggleCard
+          label={t("settingsAnnualZakatReminder")}
           description={
             hasZakatProfile
-              ? "Recevez un email 7 jours avant l’échéance annuelle de votre Hawl."
-              : "Configurez votre profil Zakat pour définir la date de départ de votre Hawl."
+              ? t("settingsAnnualZakatReminderDesc")
+              : t("settingsAnnualZakatReminderNoProfile")
           }
           checked={zakatEnabled}
           disabled={saving === "zakat"}
@@ -764,7 +818,7 @@ function NotificationsSection({
               <p className="flex flex-wrap items-center gap-2 font-semibold text-[#a9a291]">
                 {item.label}
                 <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#8f8878]">
-                  Bientôt
+                  {t("settingsComingSoon")}
                 </span>
               </p>
               <p className="mt-2 text-sm leading-5 text-[#8f8878]">
@@ -794,6 +848,7 @@ function NotificationToggleCard({
   onChange: (checked: boolean) => void;
   href?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-start justify-between gap-5 rounded-xl border border-white/[0.05] bg-[#151b18] p-5">
       <div className="min-w-0">
@@ -801,14 +856,14 @@ function NotificationToggleCard({
           {label}
           {checked && (
             <span className="inline-flex items-center gap-1 rounded-full bg-halal-compliant/10 px-2.5 py-0.5 text-[10px] font-semibold text-halal-compliant">
-              <CheckCircle2 className="h-3 w-3" /> Actif
+              <CheckCircle2 className="h-3 w-3" /> {t("settingsActive")}
             </span>
           )}
         </p>
         <p className="mt-2 text-sm leading-5 text-[#a9a291]">{description}</p>
         {href && (
           <Link href={href} className="mt-2 inline-block text-xs font-semibold text-[#e6c364] hover:underline">
-            Configurer mon profil Zakat
+            {t("settingsConfigureZakatProfile")}
           </Link>
         )}
       </div>
@@ -820,38 +875,50 @@ function NotificationToggleCard({
 /* ------------------------------------------------------------ Sécurité -- */
 
 function SecuritySection({
+  email,
   createdAt,
   onSuccess,
   onError,
   onSignOut,
 }: {
+  email: string;
   createdAt: string;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
   onSignOut: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
+    if (!currentPassword) {
+      onError(t("settingsEnterCurrentPassword"));
+      return;
+    }
     if (password.length < 8) {
-      onError("Le mot de passe doit contenir au moins 8 caractères");
+      onError(t("settingsPasswordMinLength"));
       return;
     }
     if (password !== confirmation) {
-      onError("Les deux mots de passe ne correspondent pas");
+      onError(t("settingsPasswordsMismatch"));
       return;
     }
     setSaving(true);
     try {
-      const { error } = await createClient().auth.updateUser({ password });
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+      if (signInError) throw signInError;
+      const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setPassword("");
+      setCurrentPassword("");
       setConfirmation("");
-      onSuccess("Mot de passe mis à jour");
+      onSuccess(t("settingsPasswordUpdated"));
     } catch {
-      onError("Impossible de modifier le mot de passe");
+      onError(t("settingsPasswordUpdateFailed"));
     } finally {
       setSaving(false);
     }
@@ -861,11 +928,12 @@ function SecuritySection({
     <>
       <Panel>
         <PanelHeader
-          title="Mot de passe"
-          description="Utilisez un mot de passe unique d’au moins 8 caractères."
+          title={t("password")}
+          description={t("settingsPasswordHint")}
         />
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Nouveau mot de passe">
+          <Field label={t("settingsCurrentPassword")}><FormInput type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="••••••••" autoComplete="current-password" /></Field>
+          <Field label={t("settingsNewPassword")}>
             <FormInput
               type="password"
               value={password}
@@ -874,7 +942,7 @@ function SecuritySection({
               autoComplete="new-password"
             />
           </Field>
-          <Field label="Confirmer le mot de passe">
+          <Field label={t("settingsConfirmPassword")}>
             <FormInput
               type="password"
               value={confirmation}
@@ -892,23 +960,23 @@ function SecuritySection({
             onClick={() => void handleSave()}
             className="font-bold"
           >
-            {saving ? "Enregistrement…" : "Mettre à jour le mot de passe"}
+            {saving ? t("saving") : t("settingsUpdatePassword")}
           </Button>
         </div>
       </Panel>
 
       <Panel>
         <PanelHeader
-          title="Session et accès"
-          description="Contrôlez l’accès à votre compte Halisia."
+          title={t("settingsSessionAccess")}
+          description={t("securityDescription")}
         />
-        <div className="space-y-4">
+          <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-white/[0.05] bg-[#151b18] p-5">
             <span className="flex items-center gap-3 text-sm">
               <Monitor className="h-5 w-5 text-[#c9a84c]" />
-              Session active sur cet appareil
+              {t("settingsSessionActive")}
               <span className="text-[#a9a291]">
-                — compte créé le {formatDate(createdAt)}
+                {t("settingsAccountCreatedOn").replace("{date}", formatDate(createdAt))}
               </span>
             </span>
             <button
@@ -917,8 +985,9 @@ function SecuritySection({
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#344038] px-4 text-sm font-semibold text-[#a9a291] hover:bg-white/5 hover:text-[#ffffff]"
             >
               <LogOut className="h-4 w-4" />
-              Se déconnecter
+              {t("signOut")}
             </button>
+          <button type="button" onClick={async () => { const { error } = await createClient().auth.signOut({ scope: "others" }); if (error) onError(t("settingsSignOutOthersFailed")); else onSuccess(t("settingsSignOutOthersSuccess")); }} className="inline-flex h-10 items-center justify-center rounded-lg border border-[#344038] px-4 text-sm font-semibold text-[#a9a291] hover:bg-white/5">{t("settingsSignOutAllOthers")}</button>
           </div>
           <TwoFactorSetup onSuccess={onSuccess} onError={onError} />
         </div>
@@ -934,6 +1003,7 @@ function TwoFactorSetup({
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }) {
+  const { t } = useI18n();
   const [factorId, setFactorId] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<{ id: string; qrCode: string; secret: string } | null>(null);
   const [code, setCode] = useState("");
@@ -960,7 +1030,7 @@ function TwoFactorSetup({
       if (error || !data) throw error ?? new Error();
       setEnrollment({ id: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret });
     } catch {
-      onError("Impossible d’activer la double authentification pour le moment");
+      onError(t("settingsTwoFactorStartFailed"));
     } finally {
       setBusy(false);
     }
@@ -971,11 +1041,11 @@ function TwoFactorSetup({
     setBusy(true);
     const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId: enrollment.id, code: code.replace(/\s/g, "") });
     setBusy(false);
-    if (error) return onError("Code invalide, réessayez avec le code actuel");
+    if (error) return onError(t("settingsTwoFactorInvalidCode"));
     setFactorId(enrollment.id);
     setEnrollment(null);
     setCode("");
-    onSuccess("Double authentification activée");
+    onSuccess(t("settingsTwoFactorEnabledSuccess"));
   }
 
   async function disable() {
@@ -983,9 +1053,9 @@ function TwoFactorSetup({
     setBusy(true);
     const { error } = await createClient().auth.mfa.unenroll({ factorId });
     setBusy(false);
-    if (error) return onError("Impossible de désactiver la double authentification");
+    if (error) return onError(t("settingsTwoFactorDisableFailed"));
     setFactorId(null);
-    onSuccess("Double authentification désactivée");
+    onSuccess(t("settingsTwoFactorDisabledSuccess"));
   }
 
   return (
@@ -993,17 +1063,17 @@ function TwoFactorSetup({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <span className="flex items-center gap-3 text-sm">
           <ShieldCheck className={`h-5 w-5 ${factorId ? "text-halal-compliant" : "text-[#a9a291]"}`} />
-          Authentification à deux facteurs
-          <span className="text-[#a9a291]">— {!loaded ? "…" : factorId ? "activée" : "désactivée"}</span>
+          {t("settingsTwoFactor")}
+          <span className="text-[#a9a291]">— {!loaded ? "…" : factorId ? t("settingsTwoFactorEnabled") : t("settingsTwoFactorDisabled")}</span>
         </span>
         {loaded && !enrollment && (
           factorId ? (
             <button type="button" disabled={busy} onClick={() => void disable()} className="inline-flex h-10 items-center justify-center rounded-lg border border-[#344038] px-4 text-sm font-semibold text-[#a9a291] hover:bg-white/5 disabled:opacity-60">
-              Désactiver
+              {t("settingsTwoFactorDisable")}
             </button>
           ) : (
             <Button type="button" disabled={busy} onClick={() => void startEnrollment()} className="h-10 font-bold">
-              Activer
+              {t("settingsTwoFactorEnable")}
             </Button>
           )
         )}
@@ -1011,14 +1081,14 @@ function TwoFactorSetup({
       {enrollment && (
         <div className="mt-5 grid gap-5 border-t border-white/[0.05] pt-5 sm:grid-cols-[180px_1fr]">
           {/* eslint-disable-next-line @next/next/no-img-element -- Supabase returns the QR code as an SVG data URL */}
-          <img src={enrollment.qrCode} alt="QR code à scanner avec votre application d’authentification" className="h-44 w-44 rounded-lg bg-white p-2" />
+          <img src={enrollment.qrCode} alt={t("settingsTwoFactorQrAlt")} className="h-44 w-44 rounded-lg bg-white p-2" />
           <div className="space-y-3 text-sm text-[#a9a291]">
-            <p>Scannez ce QR code avec Google Authenticator, 1Password, Authy ou une application équivalente, puis saisissez le code affiché.</p>
-            <p className="break-all text-xs">Clé manuelle : <code className="text-[#e6c364]">{enrollment.secret}</code></p>
+            <p>{t("settingsTwoFactorScanHint")}</p>
+            <p className="break-all text-xs">{t("settingsTwoFactorManualKey")} <code className="text-[#e6c364]">{enrollment.secret}</code></p>
             <div className="flex flex-wrap gap-3">
               <FormInput value={code} onChange={(event) => setCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="123456" maxLength={7} className="max-w-[160px]" />
-              <Button type="button" disabled={busy || code.replace(/\s/g, "").length !== 6} onClick={() => void confirmEnrollment()} className="h-12 font-bold">Confirmer</Button>
-              <button type="button" onClick={() => { setEnrollment(null); setCode(""); }} className="text-sm text-[#a9a291] hover:text-white">Annuler</button>
+              <Button type="button" disabled={busy || code.replace(/\s/g, "").length !== 6} onClick={() => void confirmEnrollment()} className="h-12 font-bold">{t("confirmButton")}</Button>
+              <button type="button" onClick={() => { setEnrollment(null); setCode(""); }} className="text-sm text-[#a9a291] hover:text-white">{t("cancel")}</button>
             </div>
           </div>
         </div>
@@ -1029,41 +1099,6 @@ function TwoFactorSetup({
 
 /* --------------------------------------------------------- Préférences -- */
 
-const preferenceFields: {
-  key: keyof PreferenceSettings;
-  label: string;
-  hint: string;
-  disabled?: boolean;
-  options: { value: string; label: string }[];
-}[] = [
-  {
-    key: "language",
-    label: "Langue de l’interface",
-    hint: "Seul le français est disponible pour l’instant.",
-    disabled: true,
-    options: [{ value: "fr", label: "Français" }],
-  },
-  {
-    key: "currency",
-    label: "Devise d’affichage",
-    hint: "Montants convertis au taux du jour dans le tableau de bord, le portefeuille et la Zakat.",
-    options: [
-      { value: "EUR", label: "Euro (€)" },
-      { value: "USD", label: "Dollar US ($)" },
-      { value: "GBP", label: "Livre sterling (£)" },
-    ],
-  },
-  {
-    key: "madhhab",
-    label: "Nisab de la Zakat",
-    hint: "Le screening des actions suit toujours la norme AAOIFI.",
-    options: [
-      { value: "aaoifi", label: "Or — 85 g (AAOIFI, majorité des écoles)" },
-      { value: "hanafi", label: "Argent — 595 g (école hanafite)" },
-    ],
-  },
-];
-
 function PreferencesSection({
   initial,
   onSuccess,
@@ -1073,21 +1108,25 @@ function PreferencesSection({
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }) {
-  const router = useRouter();
+  const { t, setLanguage } = useI18n();
   const [values, setValues] = useState(initial);
+  const [bitcoin, setBitcoin] = useState(initial.bitcoinZakatable);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     try {
-      const { error } = await createClient().auth.updateUser({
-        data: { preferences: values },
-      });
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(t("sessionExpired"));
+      const { error } = await supabase.from("user_preferences").upsert({ user_id: user.id, currency: values.currency, language: values.language, nisab_type: values.nisabType, fiscal_year_start: values.fiscalYearStart, bitcoin_zakatable: bitcoin, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
       if (error) throw error;
-      onSuccess("Préférences enregistrées");
-      router.refresh();
+      const { error: metadataError } = await supabase.auth.updateUser({ data: { preferences: { currency: values.currency, madhhab: values.nisabType === "silver" ? "hanafi" : "aaoifi" } } });
+      if (metadataError) throw metadataError;
+      setLanguage(values.language);
+      onSuccess(t("preferencesUpdated"));
     } catch {
-      onError("Impossible d’enregistrer vos préférences");
+      onError(t("settingsSavePreferencesFailed"));
     } finally {
       setSaving(false);
     }
@@ -1096,32 +1135,16 @@ function PreferencesSection({
   return (
     <Panel>
       <PanelHeader
-        title="Préférences"
-        description="Adaptez l’affichage et le référentiel de conformité de Halisia."
+        title={t("preferences")}
+        description={t("settingsPreferencesDescription")}
       />
       <div className="grid gap-5 sm:grid-cols-2">
-        {preferenceFields.map((field) => (
-          <Field key={field.key} label={field.label} hint={field.hint}>
-            <select
-              value={field.key === "language" ? "fr" : values[field.key]}
-              disabled={field.disabled}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  [field.key]: event.target.value,
-                }))
-              }
-              className="h-12 w-full appearance-none rounded-lg border border-[#344038] bg-[#151b18] px-4 text-sm outline-none focus:border-[#c9a84c] disabled:opacity-60"
-            >
-              {field.options.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        ))}
+        <Field label={t("displayCurrency")} hint={t("settingsCurrencyHint")}><select value={values.currency} onChange={(event) => setValues((current) => ({ ...current, currency: event.target.value as PreferenceSettings["currency"] }))} className="h-12 w-full rounded-lg border border-[#344038] bg-[#151b18] px-4 text-sm outline-none focus:border-[#c9a84c]"><option value="EUR">EUR — Euro €</option><option value="USD">USD — Dollar $</option><option value="GBP">GBP — Pound £</option><option value="MAD">MAD — Moroccan dirham</option><option value="DZD">DZD — Algerian dinar</option><option value="TND">TND — Tunisian dinar</option></select></Field>
+        <Field label={t("language")} hint={t("languageHint")}><select value={values.language} onChange={(event) => setValues((current) => ({ ...current, language: event.target.value as PreferenceSettings["language"] }))} className="h-12 w-full rounded-lg border border-[#344038] bg-[#151b18] px-4 text-sm outline-none focus:border-[#c9a84c]"><option value="fr">Français</option><option value="en">English</option></select></Field>
+        <Field label={t("settingsNisabCalculation")} hint={t("settingsNisabHint")}><div className="space-y-3 rounded-lg border border-[#344038] bg-[#151b18] p-3 text-sm"><label className="flex items-center gap-3"><input type="radio" checked={values.nisabType === "gold"} onChange={() => setValues((current) => ({ ...current, nisabType: "gold" }))} />{t("settingsNisabGold")}</label><label className="flex items-center gap-3"><input type="radio" checked={values.nisabType === "silver"} onChange={() => setValues((current) => ({ ...current, nisabType: "silver" }))} />{t("settingsNisabSilver")}</label></div></Field>
+        <Field label={t("settingsFiscalYearStart")}><select value={values.fiscalYearStart} onChange={(event) => setValues((current) => ({ ...current, fiscalYearStart: event.target.value as PreferenceSettings["fiscalYearStart"] }))} className="h-12 w-full rounded-lg border border-[#344038] bg-[#151b18] px-4 text-sm outline-none focus:border-[#c9a84c]"><option value="january">{t("settingsJanuary")}</option><option value="july">{t("settingsJuly")}</option></select></Field>
       </div>
+      <div className="mt-6 flex items-center justify-between rounded-xl border border-white/[0.05] bg-[#151b18] p-5"><div><p className="font-semibold">{t("settingsIncludeBitcoinZakat")}</p><p className="mt-1 text-sm text-[#a9a291]">{t("settingsBitcoinZakatHint")}</p></div><Switch label={t("settingsIncludeBitcoinZakat")} checked={bitcoin} onChange={setBitcoin} /></div>
       <div className="mt-7 flex justify-end">
         <Button
           type="button"
@@ -1130,7 +1153,7 @@ function PreferencesSection({
           onClick={() => void handleSave()}
           className="font-bold"
         >
-          {saving ? "Enregistrement…" : "Sauvegarder les modifications"}
+          {saving ? t("saving") : t("saveChanges")}
         </Button>
       </div>
     </Panel>

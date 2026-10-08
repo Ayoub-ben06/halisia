@@ -61,7 +61,7 @@ export default function MethodologyPage() {
           <li>Yahoo Finance pour les cours, les capitalisations, les sociétés hors États-Unis et les dividendes.</li>
         </ul>
         <p>Les données publiques peuvent être incomplètes, retardées ou mal classées ; les activités secondaires et la répartition fine des revenus par segment ne sont pas toujours disponibles. Chaque ratio affiche sa source et sa période pour permettre la vérification. Les résultats sont informatifs et ne constituent ni un conseil en investissement ni une recommandation d’achat ou de vente.</p>
-        <p>Vous pouvez tester n’importe quelle action sur le <Link href="/screening" className="text-[#f2ca6e] hover:underline">screener</Link>.</p>
+        <p>Vous pouvez tester n’importe quelle action sur l’<Link href="/screening" className="text-[#f2ca6e] hover:underline">analyseur</Link>.</p>
       </LegalSection>
     </LegalPage>
   );

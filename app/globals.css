@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   :root {
     /* Halisia Private — fondations */
     --halisia-surface: #111412;
@@ -37,7 +41,35 @@
   }
 }
 
+@layer components {
+  .fade-in-section {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 400ms ease-out, transform 400ms ease-out;
+  }
+
+  .fade-in-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @layer utilities {
+  /* The public landing page uses the same charcoal/green surfaces as the app. */
+  .landing-page [class*="bg-[#07111c]"],
+  .landing-page [class*="bg-[#0d1722]"],
+  .landing-page [class*="bg-[#0d1b2a]"] {
+    background-color: #151b18 !important;
+  }
+
+  .landing-page [class*="bg-[#132236]"] {
+    background-color: #1a1c1a !important;
+  }
+
+  .landing-page [class*="border-[#1e3248]"] {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+  }
+
   .text-secondary {
     color: var(--halisia-text-secondary);
   }

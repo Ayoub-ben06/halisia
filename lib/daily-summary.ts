@@ -1,10 +1,10 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchYahooMarketData } from "@/lib/yahoo-prices";
+import { fetchYahooMarketData, priceAssetsFor, priceKeyOf, type YahooPriceAsset } from "@/lib/yahoo-prices";
 import { getLivePrices } from "@/lib/live-prices";
 import type { HalalStatus } from "@/lib/halal-status";
-import { assetHalalStatus, getTickerScreenings } from "@/lib/halal-screening";
+import { assetHalalStatus, getTickerScreenings, isStockAssetType } from "@/lib/halal-screening";
 
 /** Nisab de référence utilisé pour l'estimation, en euros. */
 export const NISAB_EUR = 5950;
@@ -99,25 +99,17 @@ export async function buildDailySummaries(
   const cryptoAssets = cryptoResult.data ?? [];
   const goldAssets = goldResult.data ?? [];
 
-  // Un seul appel Yahoo pour tous les utilisateurs : on déduplique par ISIN.
-  const uniqueIsins = new Map<
-    string,
-    { isin: string; ticker: string | null; name: string; currency: string }
-  >();
-  for (const asset of assets) {
-    if (asset.isin && !uniqueIsins.has(asset.isin)) {
-      uniqueIsins.set(asset.isin, {
-        isin: asset.isin,
-        ticker: asset.ticker,
-        name: asset.name,
-        currency: asset.currency,
-      });
-    }
+  // Un seul appel Yahoo pour tous les utilisateurs : on déduplique par ISIN
+  // (ou ticker) et devise de la position.
+  const uniqueAssets = new Map<string, YahooPriceAsset>();
+  for (const asset of priceAssetsFor(assets)) {
+    const id = `${asset.key}|${asset.currency}`;
+    if (!uniqueAssets.has(id)) uniqueAssets.set(id, asset);
   }
 
   const [yahooPrices, livePrices] = await Promise.all([
     fetchYahooMarketData([
-      ...Array.from(uniqueIsins.values()),
+      ...Array.from(uniqueAssets.values()),
       { isin: "GC=F", ticker: "GC=F", name: "Gold futures", currency: "USD" },
     ]),
     getLivePrices(),
@@ -126,7 +118,7 @@ export async function buildDailySummaries(
   // Cache-only (no on-demand analysis) to keep the cron run short; tickers
   // not screened yet show as "unknown" until the compliance cron runs.
   const screenings = await getTickerScreenings(
-    assets.filter((asset) => asset.type === "stock" && asset.ticker).map((asset) => asset.ticker!),
+    assets.filter((asset) => isStockAssetType(asset.type) && asset.ticker).map((asset) => asset.ticker!),
     0,
   );
   const summaries: DailySummaryData[] = [];
@@ -141,7 +133,8 @@ export async function buildDailySummaries(
 
     for (const asset of assets.filter((row) => row.user_id === userId)) {
       const buyPrice = Number(asset.average_buy_price);
-      const market = asset.isin ? yahooPrices[asset.isin] : null;
+      const priceKey = priceKeyOf(asset);
+      const market = priceKey ? yahooPrices[priceKey] : null;
       const referencePrice = buyPrice;
       const yahooPrice = market?.price ?? null;
 

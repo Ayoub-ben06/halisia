@@ -1,0 +1,4 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "ignorePatterns": ["screening-comparison-*.json", "supabase/**"]
+}

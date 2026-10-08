@@ -7,6 +7,7 @@ import {
   processComplianceReminders,
   processComplianceScreening,
 } from "@/lib/compliance-tracker";
+import { reportError, reportFailures } from "@/lib/monitoring";
 
 // Reminders run before screening so that a case opened in this run is not
 // picked up again as "not yet notified" by a concurrent reminder pass.
@@ -42,14 +43,21 @@ export async function POST(request: NextRequest) {
     const [priceAlerts, zakatReminders, compliance] = await Promise.all([
       processPriceAlerts(),
       processAnnualZakatReminders(),
-      processCompliance().catch((error: unknown) => ({
-        error: error instanceof Error ? error.message : "Erreur inconnue",
-      })),
+      processCompliance().catch((error: unknown) => {
+        reportError(error, "cron:compliance");
+        return { error: error instanceof Error ? error.message : "Erreur inconnue" };
+      }),
     ]);
+    reportFailures("cron:price-alerts", priceAlerts.failed);
+    reportFailures("cron:zakat-reminders", zakatReminders.failed);
+    if ("reminders" in compliance) {
+      reportFailures("cron:compliance-reminders", compliance.reminders.failed);
+      reportFailures("cron:compliance-screening", compliance.screening.failed);
+    }
     return NextResponse.json({ success: true, priceAlerts, zakatReminders, compliance });
   } catch (error) {
+    reportError(error, "cron:process-notifications");
     const message = error instanceof Error ? error.message : "Erreur inconnue";
-    console.error("Event notifications run failed:", message);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

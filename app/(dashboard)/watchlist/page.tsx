@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getFxRate, normalizeCurrency } from "@/lib/aaoifi/fx";
 import { fetchYahooQuotes } from "@/lib/yahoo-quote";
 import { fetchSparklines } from "@/lib/yahoo-sparkline";
-import { assetHalalStatus, getTickerScreenings } from "@/lib/halal-screening";
+import { assetHalalStatus, getTickerScreenings, isStockAssetType } from "@/lib/halal-screening";
 import {
   WatchlistView,
   type WatchlistAlert,
@@ -32,7 +33,7 @@ export default async function WatchlistPage() {
     supabase.from("user_preferences").select("*").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const loadError = watchlistResult.error ?? alertsResult.error;
+  const loadError = watchlistResult.error ?? alertsResult.error ?? preferencesResult.error;
   if (loadError) {
     throw new Error(`Impossible de charger la watchlist : ${loadError.message}`);
   }
@@ -42,14 +43,18 @@ export default async function WatchlistPage() {
   const [quotes, sparklines, screenings] = await Promise.all([
     fetchYahooQuotes(tickers),
     fetchSparklines(tickers),
-    getTickerScreenings(watchlistRows.filter((row) => row.type === "stock").map((row) => row.ticker)),
+    getTickerScreenings(watchlistRows.filter((row) => isStockAssetType(row.type)).map((row) => row.ticker)),
   ]);
 
-  const items: WatchlistItem[] = watchlistRows.map((row) => {
+  const candidates = await Promise.all(watchlistRows.map(async (row) => {
     const quote = quotes[row.ticker];
     const halalStatus = assetHalalStatus(row, screenings);
-    const price = quote?.price ?? null;
-    const changePercent = quote?.changePercent ?? null;
+    const sourceCurrency = quote?.currency;
+    const source = sourceCurrency ? normalizeCurrency(sourceCurrency) : null;
+    const rate = source && source.code !== "EUR" ? await getFxRate(sourceCurrency!, "EUR") : 1;
+    const factor = source?.factor ?? 1;
+    const price = quote?.price != null && rate != null ? quote.price * factor * rate : null;
+    const change = quote?.change != null && rate != null ? quote.change * factor * rate : null;
 
     return {
       id: row.id,
@@ -60,12 +65,20 @@ export default async function WatchlistPage() {
       type: row.type,
       addedAt: row.added_at,
       price,
-      change: quote?.change ?? null,
-      changePercent,
+      change,
+      currency: "EUR",
+      changePercent: quote?.changePercent ?? null,
       halalStatus,
       sparkline: sparklines[row.ticker] ?? [],
+      isEurQuote: source?.code === "EUR",
     };
-  });
+  }));
+  const items: WatchlistItem[] = Array.from(candidates.reduce((unique, item) => {
+    const key = item.name.trim().toLocaleLowerCase("fr-FR");
+    const previous = unique.get(key);
+    if (!previous || (item.isEurQuote && !previous.isEurQuote) || (item.price != null && previous.price == null)) unique.set(key, item);
+    return unique;
+  }, new Map<string, (typeof candidates)[number]>()).values()).map(({ isEurQuote: _isEurQuote, ...item }) => item);
 
   const alerts: WatchlistAlert[] = (alertsResult.data ?? []).map((row) => ({
     id: row.id,

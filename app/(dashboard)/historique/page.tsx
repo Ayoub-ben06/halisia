@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { HistoryView, type HistoryTransaction } from "@/components/dashboard/history-view";
 import { createClient } from "@/lib/supabase/server";
 import { displaySettings } from "@/lib/user-preferences";
+import { realizedGains } from "@/lib/transactions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,28 +16,21 @@ export default async function HistoriquePage() {
   ]);
   if (error) throw new Error(`Impossible de charger l’historique : ${error.message}`);
 
-  // Realized gains use the weighted average cost of earlier buys of the same asset.
-  const book = new Map<string, { quantity: number; cost: number }>();
-  const transactions: HistoryTransaction[] = (data ?? []).map((row) => {
+  const rows = data ?? [];
+  const gains = realizedGains(rows.map((row) => ({
+    ticker: row.asset_ticker,
+    side: row.side === "sell" ? "sell" : "buy",
+    quantity: Number(row.quantity),
+    price: Number(row.price_eur),
+    amount: Number(row.amount_eur),
+    fee: Number(row.fee_eur ?? 0),
+  })));
+  const transactions: HistoryTransaction[] = rows.map((row, index) => {
     const quantity = Number(row.quantity);
     const price = Number(row.price_eur);
     const total = Number(row.amount_eur);
     const side = row.side === "sell" ? "sell" : "buy";
-    const position = book.get(row.asset_ticker) ?? { quantity: 0, cost: 0 };
-    let gain: number | undefined;
-    let gainPercent: number | undefined;
-    if (side === "buy") {
-      position.quantity += quantity;
-      position.cost += total + Number(row.fee_eur ?? 0);
-    } else if (position.quantity > 0) {
-      const averageCost = position.cost / position.quantity;
-      const soldQuantity = Math.min(quantity, position.quantity);
-      gain = (price - averageCost) * soldQuantity;
-      gainPercent = averageCost ? ((price - averageCost) / averageCost) * 100 : undefined;
-      position.quantity -= soldQuantity;
-      position.cost -= averageCost * soldQuantity;
-    }
-    book.set(row.asset_ticker, position);
+    const { gain, gainPercent } = gains[index];
     const assetClass = row.asset_class;
     return {
       id: row.id,

@@ -1,0 +1,61 @@
+import type { ETFDefinition } from "./types";
+
+// Curated list: 15 Islamic, 5 bond and 30 conventional ETFs.
+export const ETF_LIST: ETFDefinition[] = [
+  ["ISWD", "IE00B27YCK28", "iShares MSCI World Islamic UCITS ETF", "islamic_certified", "ishares", null],
+  ["IWQU", "IE00B3Z3FS74", "iShares MSCI World Islamic UCITS ETF (Acc)", "islamic_certified", "ishares", null],
+  ["ISDE", "IE00B27YCP09", "iShares MSCI EM Islamic UCITS ETF", "islamic_certified", "ishares", null],
+  ["ISUS", "IE00B3Z0D756", "iShares MSCI USA Islamic UCITS ETF", "islamic_certified", "ishares", null],
+  ["ISEU", "IE00B3Z2FS74", "iShares MSCI Europe Islamic UCITS ETF", "islamic_certified", "ishares", null],
+  ["HIWE", "IE00B5B40Y02", "HSBC MSCI World Islamic UCITS ETF", "islamic_certified", "hsbc", null],
+  ["HIUS", "IE00B5B3XD83", "HSBC MSCI USA Islamic UCITS ETF", "islamic_certified", "hsbc", null],
+  ["HIEU", "IE00B5B3XC76", "HSBC MSCI Europe Islamic UCITS ETF", "islamic_certified", "hsbc", null],
+  ["HIEM", "IE00B5B40Z09", "HSBC MSCI Emerging Markets Islamic UCITS ETF", "islamic_certified", "hsbc", null],
+  ["HIUK", "IE00B4MKK468", "HSBC MSCI UK Islamic UCITS ETF", "islamic_certified", "hsbc", null],
+  ["SPUS", "US78468R6633", "SP Funds S&P 500 Sharia Industry Exclusions ETF", "islamic_certified", "sp_funds", null],
+  ["HLAL", "US9341261076", "Wahed FTSE USA Shariah ETF", "islamic_certified", "wahed", null],
+  ["UMMA", "US9341261159", "Wahed Dow Jones Islamic World ETF", "islamic_certified", "wahed", null],
+  ["SPRE", "US78468R5718", "SP Funds S&P Global REIT Sharia ETF", "islamic_certified", "sp_funds", null],
+  ["SPTE", "US78468R6302", "SP Funds S&P Technology ETF Sharia", "islamic_certified", "sp_funds", null],
+  ["AGG", "US4642872265", "iShares Core US Aggregate Bond ETF", "bond", "ishares", "SPUS"],
+  ["BND", "US9219378356", "Vanguard Total Bond Market ETF", "bond", "vanguard", "HLAL"],
+  ["TLT", "US4642874329", "iShares 20+ Year Treasury Bond ETF", "bond", "ishares", null],
+  ["LQD", "US4642876555", "iShares iBoxx Investment Grade Corporate Bond ETF", "bond", "ishares", null],
+  ["HYG", "US4642885135", "iShares iBoxx High Yield Corporate Bond ETF", "bond", "ishares", null],
+  ["IWDA", "IE00B4L5Y983", "iShares Core MSCI World UCITS ETF", "conventional", "ishares", "ISWD"],
+  ["VWCE", "IE00BK5BQT80", "Vanguard FTSE All-World UCITS ETF", "conventional", "vanguard", "ISWD"],
+  ["CSPX", "IE00B5BMR087", "iShares Core S&P 500 UCITS ETF", "conventional", "ishares", "SPUS"],
+  ["CW8", "LU1681043599", "Amundi MSCI World UCITS ETF", "conventional", "amundi", "ISWD"],
+  ["PAEEM", "LU1681045370", "Amundi MSCI Emerging Markets UCITS ETF", "conventional", "amundi", "ISDE"],
+  ["EQQQ", "IE0032077012", "Invesco NASDAQ-100 UCITS ETF", "conventional", "invesco", "SPTE"],
+  ["QQQ", "US46090E1038", "Invesco QQQ Trust", "conventional", "invesco", "SPTE"],
+  ["SPY", "US78462F1030", "SPDR S&P 500 ETF Trust", "conventional", "ssga", "SPUS"],
+  ["VOO", "US9229083632", "Vanguard S&P 500 ETF", "conventional", "vanguard", "SPUS"],
+  ["VTI", "US9229087690", "Vanguard Total Stock Market ETF", "conventional", "vanguard", "HLAL"],
+  ["VT", "US9220427424", "Vanguard Total World Stock ETF", "conventional", "vanguard", "UMMA"],
+  ["VXUS", "US9219438580", "Vanguard Total International Stock ETF", "conventional", "vanguard", "ISDE"],
+  ["ARKK", "US00214Q1040", "ARK Innovation ETF", "conventional", "ark", null],
+  ["XLK", "US81369Y8030", "Technology Select Sector SPDR Fund", "conventional", "ssga", "SPTE"],
+  ["XLF", "US81369Y6059", "Financial Select Sector SPDR Fund", "conventional", "ssga", null],
+  ["XLE", "US81369Y5064", "Energy Select Sector SPDR Fund", "conventional", "ssga", null],
+  ["XLV", "US81369Y3077", "Health Care Select Sector SPDR Fund", "conventional", "ssga", null],
+  ["MCHI", "US4642864007", "iShares MSCI China ETF", "conventional", "ishares", null],
+  ["EWJ", "US4642867729", "iShares MSCI Japan ETF", "conventional", "ishares", null],
+  ["EEM", "US4642872349", "iShares MSCI Emerging Markets ETF", "conventional", "ishares", "ISDE"],
+  ["VGT", "US9229087690", "Vanguard Information Technology ETF", "conventional", "vanguard", "SPTE"],
+  ["ESE", "LU1681048804", "Amundi PEA S&P 500 UCITS ETF", "conventional", "amundi", "WPEA"],
+  ["WPEA", "LU2572257124", "Amundi PEA MSCI World UCITS ETF", "conventional", "amundi", "ISWD"],
+  ["LYPS", "FR0011871102", "Lyxor PEA S&P 500 UCITS ETF", "conventional", "lyxor", null],
+  ["EWLD", "LU1781541179", "Lyxor MSCI World UCITS ETF", "conventional", "lyxor", "ISWD"],
+  ["PSP5", "LU1135865084", "Amundi PEA S&P 500 ESG UCITS ETF", "conventional", "amundi", null],
+  ["C6E", "FR0010510800", "Amundi CAC 40 UCITS ETF", "conventional", "amundi", null],
+  ["PUST", "FR0011871110", "Lyxor PEA Nasdaq-100 UCITS ETF", "conventional", "lyxor", "SPTE"],
+  ["HIWS", null, "HSBC MSCI World Islamic Screened UCITS ETF - USD Acc", "islamic_certified", "hsbc", null],
+  ["ISDU", "IE00B27YCL35", "iShares MSCI USA Islamic UCITS ETF (Dist)", "islamic_certified", "ishares", null],
+].map(([ticker, isin, name, etf_type, provider, halal_alternative]) => ({ ticker: ticker!, isin, name: name!, etf_type: etf_type as ETFDefinition["etf_type"], provider: provider!, halal_alternative }));
+
+export function findETF(ticker: string) {
+  const normalized = ticker.trim().toUpperCase();
+  const base = normalized.split(/[.=-]/)[0];
+  return ETF_LIST.find((etf) => etf.ticker.toUpperCase() === normalized || etf.ticker.toUpperCase() === base) ?? null;
+}

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BadgeEuro,
   Coins,
+  Droplets,
   Eye,
   History,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 const navSections = [
   {
@@ -22,6 +24,7 @@ const navSections = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { label: "Screening", href: "/screening?app=1", icon: ShieldCheck },
       { label: "Zakat", href: "/zakat?app=1", icon: Coins },
+      { label: "Purification", href: "/purification?app=1", icon: Droplets },
     ],
   },
   {
@@ -58,6 +61,7 @@ function isActive(pathname: string, href: string) {
 }
 
 export function Sidebar({ email }: { email?: string }) {
+  const { t, language } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const initials =
@@ -86,6 +90,11 @@ export function Sidebar({ email }: { email?: string }) {
     ].join(" ");
   }
 
+  const labels: Record<string, string> = {
+    Dashboard: t("dashboard"), Screening: t("screening"), Zakat: t("zakat"), Purification: t("purification"),
+    Portefeuille: t("portfolio"), Watchlist: t("watchlist"), Historique: t("history"),
+    "Tarifs / Abonnements": t("pricing"), Paramètres: t("settings"), Gestion: t("management"), Compte: t("account"),
+  };
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 flex-col border-r border-border bg-[#191c1a] md:flex">
@@ -102,14 +111,14 @@ export function Sidebar({ email }: { email?: string }) {
             >
               {section.label && (
                 <p className="mb-3 px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/45">
-                  {section.label}
+                  {section.label ? labels[section.label] : null}
                 </p>
               )}
               <div className="space-y-1">
                 {section.links.map(({ label, href, icon: Icon }) => (
                   <Link key={href} href={href} className={linkClass(href)}>
                     <Icon className="h-5 w-5 shrink-0" />
-                    {label}
+                    {labels[label] ?? label}
                   </Link>
                 ))}
               </div>
@@ -124,7 +133,7 @@ export function Sidebar({ email }: { email?: string }) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs text-muted-foreground">
-                {email ?? "Utilisateur"}
+                {email ?? t("user")}
               </p>
             </div>
             <button
@@ -149,7 +158,7 @@ export function Sidebar({ email }: { email?: string }) {
         <details className="group relative flex flex-1">
           <summary className={`${linkClass("/__more", true)} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${mobileMore.some((link) => isActive(pathname, link.href)) ? "text-primary" : ""}`}>
             <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[10px] font-medium">Plus</span>
+            <span className="text-[10px] font-medium">{t("more")}</span>
           </summary>
           <div className="absolute bottom-14 right-1 w-56 overflow-hidden rounded-xl border border-border bg-[#191c1a] py-2 shadow-2xl">
             {mobileMore.map(({ label, href, icon: Icon }) => (
@@ -160,7 +169,7 @@ export function Sidebar({ email }: { email?: string }) {
             ))}
             <button type="button" onClick={() => void handleLogout()} className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-left text-sm text-muted-foreground hover:bg-white/5">
               <LogOut className="h-4 w-4" />
-              Se déconnecter
+              {t("signOut")}
             </button>
           </div>
         </details>

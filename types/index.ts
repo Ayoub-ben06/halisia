@@ -163,6 +163,15 @@ export type Database = {
           zakat_reminder_last_sent_for: string | null;
           created_at: string;
           updated_at: string;
+          currency: string;
+          language: string;
+          nisab_type: string;
+          fiscal_year_start: string;
+          halal_change_alert: boolean;
+          purification_alert: boolean;
+          weekly_compliance_report: boolean;
+          zakat_reminder: boolean;
+          bitcoin_zakatable: boolean;
         };
         Insert: {
           id?: string;
@@ -175,8 +184,71 @@ export type Database = {
           zakat_reminder_last_sent_for?: string | null;
           created_at?: string;
           updated_at?: string;
+          currency?: string;
+          language?: string;
+          nisab_type?: string;
+          fiscal_year_start?: string;
+          halal_change_alert?: boolean;
+          purification_alert?: boolean;
+          weekly_compliance_report?: boolean;
+          zakat_reminder?: boolean;
+          bitcoin_zakatable?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["user_preferences"]["Insert"]>;
+        Relationships: [];
+      };
+      user_profiles: {
+        Row: { id: string; first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null; created_at: string; updated_at: string };
+        Insert: { id: string; first_name?: string | null; last_name?: string | null; phone?: string | null; avatar_url?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["user_profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      zakat_profile: {
+        Row: { user_id: string; start_date: string; include_bitcoin: boolean; include_income: boolean; created_at: string; updated_at: string };
+        Insert: { user_id: string; start_date: string; include_bitcoin?: boolean; include_income?: boolean; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["zakat_profile"]["Insert"]>;
+        Relationships: [];
+      };
+      premium_waitlist: {
+        Row: { id: string; email: string; user_id: string | null; created_at: string };
+        Insert: { id?: string; email: string; user_id?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["premium_waitlist"]["Insert"]>;
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          stripe_price_id: string | null;
+          plan: "monthly" | "yearly";
+          status: string;
+          current_period_start: string | null;
+          current_period_end: string | null;
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          trial_end: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          stripe_price_id?: string | null;
+          plan: "monthly" | "yearly";
+          status: string;
+          current_period_start?: string | null;
+          current_period_end?: string | null;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          trial_end?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
         Relationships: [];
       };
       screening_cache: {
@@ -201,6 +273,12 @@ export type Database = {
           screened_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["screening_cache"]["Insert"]>;
+        Relationships: [];
+      };
+      waitlist: {
+        Row: { id: string; email: string; created_at: string };
+        Insert: { id?: string; email: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["waitlist"]["Insert"]>;
         Relationships: [];
       };
       transactions: {
@@ -299,6 +377,22 @@ export type Database = {
           reminder_85_sent_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["compliance_changes"]["Insert"]>;
+        Relationships: [];
+      };
+      etf_screening: {
+        Row: {
+          id: string; ticker: string; isin: string | null; name: string; etf_type: "islamic_certified" | "bond" | "conventional"; provider: string | null;
+          total_holdings: number; analyzed_holdings: number; compliant_weight: number; doubtful_weight: number; non_compliant_weight: number; unanalyzed_weight: number; purification_ratio: number;
+          verdict: "compliant" | "doubtful" | "non_compliant" | "bond_forbidden" | null; verdict_reason: string | null; top_non_compliant: unknown; halal_alternative: string | null; halal_alternative_name: string | null; composition_date: string | null; last_updated: string; next_update: string | null;
+        };
+        Insert: { id?: string; ticker: string; isin?: string | null; name: string; etf_type: "islamic_certified" | "bond" | "conventional"; provider?: string | null; total_holdings?: number; analyzed_holdings?: number; compliant_weight?: number; doubtful_weight?: number; non_compliant_weight?: number; unanalyzed_weight?: number; purification_ratio?: number; verdict?: "compliant" | "doubtful" | "non_compliant" | "bond_forbidden" | null; verdict_reason?: string | null; top_non_compliant?: unknown; halal_alternative?: string | null; halal_alternative_name?: string | null; composition_date?: string | null; last_updated?: string; next_update?: string | null };
+        Update: Partial<Database["public"]["Tables"]["etf_screening"]["Insert"]>;
+        Relationships: [];
+      };
+      etf_holdings: {
+        Row: { id: string; etf_ticker: string; holding_ticker: string | null; holding_isin: string | null; holding_name: string; weight: number; halal_status: string | null; halal_reason: string | null; last_screened: string };
+        Insert: { id?: string; etf_ticker: string; holding_ticker?: string | null; holding_isin?: string | null; holding_name: string; weight: number; halal_status?: string | null; halal_reason?: string | null; last_screened?: string };
+        Update: Partial<Database["public"]["Tables"]["etf_holdings"]["Insert"]>;
         Relationships: [];
       };
     };

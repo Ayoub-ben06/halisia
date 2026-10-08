@@ -27,7 +27,10 @@ async function normalizeCurrencies(data: NormalizedFinancialData): Promise<Norma
 }
 
 export async function getFinancialData(ticker: string): Promise<NormalizedFinancialData> {
-  if (!isUSStock(ticker)) return normalizeCurrencies(await new YahooFinancialDataProvider().getFinancialData(ticker));
+  if (!isUSStock(ticker)) {
+    if (ticker.toUpperCase().endsWith(".SR")) console.log("Saudi ticker detected, using Yahoo Finance only", ticker);
+    return normalizeCurrencies(await new YahooFinancialDataProvider().getFinancialData(ticker));
+  }
   try {
     return await normalizeCurrencies(await new SECFinancialDataProvider().getFinancialData(ticker));
   } catch (secError) {

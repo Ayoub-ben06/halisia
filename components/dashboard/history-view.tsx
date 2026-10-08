@@ -20,6 +20,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AddAssetModal } from "@/components/dashboard/add-asset-modal";
 import { createClient } from "@/lib/supabase/client";
 import { moneyFormatter } from "@/lib/money";
+import { useI18n } from "@/components/providers/i18n-provider";
 
 export type HistoryTransaction = {
   id: string;
@@ -44,6 +45,7 @@ function displayDate(value: string) {
 }
 
 export function HistoryView({ transactions, displayCurrency = "EUR", displayRate = 1 }: { transactions: HistoryTransaction[]; displayCurrency?: string; displayRate?: number }) {
+  const { t } = useI18n();
   const router = useRouter();
   const euro = useMemo(() => moneyFormatter(displayCurrency, displayRate), [displayCurrency, displayRate]);
   const [account, setAccount] = useState("Tous");
@@ -105,8 +107,8 @@ export function HistoryView({ transactions, displayCurrency = "EUR", displayRate
     setDeleteError("");
     const { data, error } = await createClient().from("transactions").delete().eq("id", deleteId).select("id");
     setDeleting(false);
-    if (error) return setDeleteError("Suppression impossible. Réessayez plus tard.");
-    if (!data?.length) return setDeleteError("Suppression refusée : la migration du 24/09/2026 doit être appliquée.");
+    if (error) return setDeleteError(t("deleteFailed"));
+    if (!data?.length) return setDeleteError(t("deleteMigrationRequired"));
     setDeleteId(null);
     router.refresh();
   }
@@ -114,34 +116,34 @@ export function HistoryView({ transactions, displayCurrency = "EUR", displayRate
   return (
     <main className="mx-auto max-w-[1400px] p-4 text-white sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h1 className="text-3xl font-bold">Historique</h1><p className="mt-2 text-sm text-[rgba(255,255,255,0.6)]">Achats et ventes enregistrés dans Halisia</p></div>
+        <div><h1 className="text-3xl font-bold">{t("history")}</h1><p className="mt-2 text-sm text-[rgba(255,255,255,0.6)]">{t("historySubtitle")}</p></div>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={exportCsv} disabled={!filtered.length} className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#c9a84c] px-4 text-sm font-semibold text-[#e6c364] transition-colors hover:bg-[#c9a84c]/10 disabled:opacity-40">Exporter <Download className="h-4 w-4" /></button>
-          <button type="button" onClick={() => setAddAsset("manual")} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#c9a84c] px-5 text-sm font-bold text-[#111412] transition-colors hover:bg-[#e6c364]"><Plus className="h-4 w-4" />Nouvel achat</button>
+          <button type="button" onClick={exportCsv} disabled={!filtered.length} className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#c9a84c] px-4 text-sm font-semibold text-[#e6c364] transition-colors hover:bg-[#c9a84c]/10 disabled:opacity-40">{t("exportButton")} <Download className="h-4 w-4" /></button>
+          <button type="button" onClick={() => setAddAsset("manual")} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#c9a84c] px-5 text-sm font-bold text-[#111412] transition-colors hover:bg-[#e6c364]"><Plus className="h-4 w-4" />{t("newPurchase")}</button>
         </div>
       </div>
 
       <section className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Total des achats" value={euro.format(summary.buys)} icon={<ArrowUpRight />} />
-        <SummaryCard label="Total des ventes" value={euro.format(summary.sells)} icon={<ArrowDownRight />} />
-        <SummaryCard label="Plus-values réalisées" value={`${summary.gains >= 0 ? "+" : ""}${euro.format(summary.gains)}`} icon={<TrendingUp />} positive={summary.gains >= 0} hint="Prix moyen pondéré" />
-        <SummaryCard label="Transactions ce mois" value={String(summary.thisMonth)} icon={<CalendarDays />} />
+        <SummaryCard label={t("totalPurchases")} value={euro.format(summary.buys)} icon={<ArrowUpRight />} />
+        <SummaryCard label={t("totalSales")} value={euro.format(summary.sells)} icon={<ArrowDownRight />} />
+        <SummaryCard label={t("realizedGains")} value={`${summary.gains >= 0 ? "+" : ""}${euro.format(summary.gains)}`} icon={<TrendingUp />} positive={summary.gains >= 0} hint={t("weightedAveragePrice")} />
+        <SummaryCard label={t("transactionsThisMonth")} value={String(summary.thisMonth)} icon={<CalendarDays />} />
       </section>
 
       <section className="mt-8 overflow-hidden rounded-2xl border border-white/[0.05] bg-[#1a1c1a]">
         <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.05] p-5">
-          <DateField label="Du" value={fromDate} onChange={(value) => { setFromDate(value); setPage(1); }} />
-          <DateField label="au" value={toDate} onChange={(value) => { setToDate(value); setPage(1); }} />
-          <FilterSelect label="Compte" value={account} options={accounts} onChange={(value) => { setAccount(value); setPage(1); }} />
-          <FilterSelect label="Type" value={type} options={["Tous", "Achat", "Vente"]} onChange={(value) => { setType(value); setPage(1); }} />
-          <label className="relative min-w-[220px] flex-1 xl:max-w-[290px]"><span className="sr-only">Rechercher un actif</span><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-[#a9a291]" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Rechercher un actif..." className="h-11 w-full rounded-lg border border-[#4d544e] bg-[#202321] pl-10 pr-3 text-sm outline-none placeholder:text-[#777d78] focus:border-[#c9a84c]" /></label>
-          <button type="button" onClick={resetFilters} className="ml-auto text-xs text-[#a9a291] underline-offset-4 hover:text-white hover:underline">Réinitialiser les filtres</button>
+          <DateField label={t("fromDate")} value={fromDate} onChange={(value) => { setFromDate(value); setPage(1); }} />
+          <DateField label={t("toDate")} value={toDate} onChange={(value) => { setToDate(value); setPage(1); }} />
+          <FilterSelect label={t("account")} value={account} options={accounts} onChange={(value) => { setAccount(value); setPage(1); }} t={t} />
+          <FilterSelect label={t("typeColumn")} value={type} options={["Tous", "Achat", "Vente"]} onChange={(value) => { setType(value); setPage(1); }} t={t} />
+          <label className="relative min-w-[220px] flex-1 xl:max-w-[290px]"><span className="sr-only">{t("searchAsset")}</span><Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-[#a9a291]" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={t("searchAssetPlaceholder")} className="h-11 w-full rounded-lg border border-[#4d544e] bg-[#202321] pl-10 pr-3 text-sm outline-none placeholder:text-[#777d78] focus:border-[#c9a84c]" /></label>
+          <button type="button" onClick={resetFilters} className="ml-auto text-xs text-[#a9a291] underline-offset-4 hover:text-white hover:underline">{t("resetFilters")}</button>
         </div>
 
         {visible.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1100px] text-sm">
-              <thead className="border-b border-white/[0.05] bg-[#181b19] text-left text-[11px] uppercase tracking-wider text-[rgba(255,255,255,0.6)]"><tr><th className="px-5 py-4 font-medium">Date</th><th className="px-5 py-4 font-medium">Actif</th><th className="px-5 py-4 font-medium">Type</th><th className="px-5 py-4 font-medium">Compte</th><th className="px-5 py-4 text-right font-medium">Quantité</th><th className="px-5 py-4 text-right font-medium">Prix unitaire</th><th className="px-5 py-4 text-right font-medium">Montant total</th><th className="px-5 py-4 text-right font-medium">Plus-value</th><th className="px-5 py-4 text-right font-medium">Actions</th></tr></thead>
+              <thead className="border-b border-white/[0.05] bg-[#181b19] text-left text-[11px] uppercase tracking-wider text-[rgba(255,255,255,0.6)]"><tr><th className="px-5 py-4 font-medium">{t("dateColumn")}</th><th className="px-5 py-4 font-medium">{t("portfolioAsset")}</th><th className="px-5 py-4 font-medium">{t("typeColumn")}</th><th className="px-5 py-4 font-medium">{t("account")}</th><th className="px-5 py-4 text-right font-medium">{t("quantity")}</th><th className="px-5 py-4 text-right font-medium">{t("unitPrice")}</th><th className="px-5 py-4 text-right font-medium">{t("totalAmount")}</th><th className="px-5 py-4 text-right font-medium">{t("gainColumn")}</th><th className="px-5 py-4 text-right font-medium">{t("actionsColumn")}</th></tr></thead>
               <tbody>{visible.map((item) => (
                 <TransactionRows key={item.id} item={item} format={euro.format} confirming={deleteId === item.id} busy={deleting} error={deleteId === item.id ? deleteError : ""} onDelete={() => { setDeleteError(""); setDeleteId(item.id); }} onCancelDelete={() => setDeleteId(null)} onConfirmDelete={() => void confirmDelete()} />
               ))}</tbody>
@@ -149,9 +151,9 @@ export function HistoryView({ transactions, displayCurrency = "EUR", displayRate
           </div>
         ) : <EmptyState filtered={transactions.length > 0} onImport={() => setAddAsset("csv")} />}
 
-        {visible.length > 0 && <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.05] px-5 py-4 text-xs text-[#a9a291]"><p>Affichage de {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filtered.length)} sur {filtered.length} transaction{filtered.length > 1 ? "s" : ""}</p><div className="flex flex-wrap items-center gap-4"><label className="flex items-center gap-2"><span>Lignes par page</span><span className="relative"><select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-8 appearance-none rounded-md border border-white/[0.05] bg-[#202321] pl-3 pr-8 text-xs text-white outline-none focus:border-[#c9a84c]">{[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}</select><ChevronDown className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-[#777d78]" /></span></label><div className="flex items-center gap-1"><PageButton label="Page précédente" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="h-4 w-4" /></PageButton>{Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => <PageButton key={pageNumber} active={currentPage === pageNumber} onClick={() => setPage(pageNumber)}>{pageNumber}</PageButton>)}<PageButton label="Page suivante" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}><ChevronRight className="h-4 w-4" /></PageButton></div></div></div>}
+        {visible.length > 0 && <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.05] px-5 py-4 text-xs text-[#a9a291]"><p>{t("showingRange").replace("{start}", String((currentPage - 1) * pageSize + 1)).replace("{end}", String(Math.min(currentPage * pageSize, filtered.length))).replace("{total}", String(filtered.length)).replace("{label}", filtered.length > 1 ? t("transactionPlural") : t("transactionSingular"))}</p><div className="flex flex-wrap items-center gap-4"><label className="flex items-center gap-2"><span>{t("rowsPerPage")}</span><span className="relative"><select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className="h-8 appearance-none rounded-md border border-white/[0.05] bg-[#202321] pl-3 pr-8 text-xs text-white outline-none focus:border-[#c9a84c]">{[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}</select><ChevronDown className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-[#777d78]" /></span></label><div className="flex items-center gap-1"><PageButton label={t("previousPage")} disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))}><ChevronLeft className="h-4 w-4" /></PageButton>{Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => <PageButton key={pageNumber} active={currentPage === pageNumber} onClick={() => setPage(pageNumber)}>{pageNumber}</PageButton>)}<PageButton label={t("nextPage")} disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))}><ChevronRight className="h-4 w-4" /></PageButton></div></div></div>}
       </section>
-      <p className="mt-4 text-xs text-[#8f8878]">Pour enregistrer une vente, utilisez l’action « Enregistrer une vente » sur la ligne du portefeuille : la position et l’historique sont mis à jour ensemble.</p>
+      <p className="mt-4 text-xs text-[#8f8878]">{t("saleRecordingHint")}</p>
       <AddAssetModal open={addAsset !== null} initialTab={addAsset ?? "manual"} onClose={() => setAddAsset(null)} />
     </main>
   );
@@ -163,11 +165,12 @@ type TransactionRowsProps = {
 };
 
 function TransactionRows({ item, format, confirming, busy, error, onDelete, onCancelDelete, onConfirmDelete }: TransactionRowsProps) {
+  const { t } = useI18n();
   return <>
     <tr className={`border-b border-white/[0.05] transition-colors ${confirming ? "bg-red-500/[0.06]" : "hover:bg-white/[0.025]"}`}>
       <td className="whitespace-nowrap px-5 py-4 text-[#d8d8d5]">{displayDate(item.date)}</td>
       <td className="px-5 py-4"><div className="flex items-center gap-3"><AssetLogo item={item} /><div><p className="font-semibold">{item.name}</p><p className="mt-0.5 text-xs text-[#8f958f]">{item.ticker}</p></div></div></td>
-      <td className="px-5 py-4"><span className={`inline-flex rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${item.type === "Achat" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/20 text-red-300"}`}>{item.type}</span></td>
+      <td className="px-5 py-4"><span className={`inline-flex rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${item.type === "Achat" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/20 text-red-300"}`}>{item.type === "Achat" ? t("transactionPurchase") : t("transactionSale")}</span></td>
       <td className="px-5 py-4 text-[#d8d8d5]">{item.account}</td>
       <td className="whitespace-nowrap px-5 py-4 text-right">{number.format(item.quantity)}{item.unit ? ` ${item.unit}` : ""}</td>
       <td className="whitespace-nowrap px-5 py-4 text-right">{format(item.unitPrice)}{item.unit === "g" ? "/g" : ""}</td>
@@ -175,7 +178,7 @@ function TransactionRows({ item, format, confirming, busy, error, onDelete, onCa
       <td className="whitespace-nowrap px-5 py-4 text-right">{item.gain == null ? <span className="text-[#777d78]">—</span> : <span className={item.gain >= 0 ? "font-semibold text-emerald-400" : "font-semibold text-red-400"}>{item.gain >= 0 ? "+" : ""}{format(item.gain)}{item.gainPercent != null ? ` (${item.gainPercent.toFixed(1).replace(".", ",")} %)` : ""}</span>}</td>
       <td className="px-5 py-4"><div className="flex items-center justify-end"><button type="button" aria-label={`Supprimer la ligne ${item.name}`} onClick={onDelete} className="flex h-8 w-8 items-center justify-center rounded-md text-[#777d78] transition-colors hover:bg-red-500/10 hover:text-red-400"><Trash2 className="h-4 w-4" /></button></div></td>
     </tr>
-    {confirming && <tr className="border-b border-red-500/20 bg-red-500/[0.06]"><td colSpan={9} className="px-5 py-3"><div className="flex flex-wrap items-center justify-end gap-3"><span className="mr-2 text-sm text-red-200">{error || "Supprimer cette ligne de l’historique ? Le portefeuille n’est pas modifié."}</span><button type="button" onClick={onCancelDelete} className="h-8 rounded-md border border-[#4d544e] px-3 text-xs text-[#d8d8d5] hover:bg-white/5">Annuler</button><button type="button" disabled={busy} onClick={onConfirmDelete} className="h-8 rounded-md bg-red-500 px-3 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-60">Confirmer</button></div></td></tr>}
+    {confirming && <tr className="border-b border-red-500/20 bg-red-500/[0.06]"><td colSpan={9} className="px-5 py-3"><div className="flex flex-wrap items-center justify-end gap-3"><span className="mr-2 text-sm text-red-200">{error || t("deleteHistoryConfirm")}</span><button type="button" onClick={onCancelDelete} className="h-8 rounded-md border border-[#4d544e] px-3 text-xs text-[#d8d8d5] hover:bg-white/5">{t("cancel")}</button><button type="button" disabled={busy} onClick={onConfirmDelete} className="h-8 rounded-md bg-red-500 px-3 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-60">{t("confirmButton")}</button></div></td></tr>}
   </>;
 }
 
@@ -187,8 +190,8 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   return <label className="flex h-11 items-center gap-2 rounded-lg border border-[#4d544e] bg-[#202321] px-3 text-xs text-[#a9a291] focus-within:border-[#c9a84c]"><CalendarDays className="h-4 w-4" /><span>{label}</span><input type="date" value={value} onChange={(event) => onChange(event.target.value)} className="w-[116px] bg-transparent text-sm text-white outline-none [color-scheme:dark]" /></label>;
 }
 
-function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return <label className="relative"><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 min-w-[145px] appearance-none rounded-lg border border-[#4d544e] bg-[#202321] pl-3 pr-9 text-sm outline-none focus:border-[#c9a84c]">{options.map((option) => <option key={option} value={option}>{option === "Tous" ? `Tous les ${label.toLowerCase()}s` : option}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-[#777d78]" /></label>;
+function FilterSelect({ label, value, options, onChange, t }: { label: string; value: string; options: string[]; onChange: (value: string) => void; t: (key: import("@/lib/i18n").TranslationKey) => string }) {
+  return <label className="relative"><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 min-w-[145px] appearance-none rounded-lg border border-[#4d544e] bg-[#202321] pl-3 pr-9 text-sm outline-none focus:border-[#c9a84c]">{options.map((option) => <option key={option} value={option}>{option === "Tous" ? t("allFilter").replace("{label}", label.toLowerCase()) : option === "Achat" ? t("transactionPurchase") : option === "Vente" ? t("transactionSale") : option}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-[#777d78]" /></label>;
 }
 
 function AssetLogo({ item }: { item: HistoryTransaction }) {
@@ -201,5 +204,6 @@ function PageButton({ children, label, active, disabled, onClick }: { children: 
 }
 
 function EmptyState({ filtered, onImport }: { filtered: boolean; onImport: () => void }) {
-  return <div className="flex min-h-[360px] flex-col items-center justify-center px-5 py-12 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#c9a84c]/10 text-[#c9a84c]"><ReceiptText className="h-7 w-7" /></span><h2 className="mt-5 text-lg font-bold">{filtered ? "Aucune transaction ne correspond à ces filtres" : "Aucune transaction enregistrée"}</h2><p className="mt-2 max-w-md text-sm text-[#a9a291]">Les achats saisis ou importés et les ventes enregistrées depuis le portefeuille apparaissent ici.</p>{!filtered && <button type="button" onClick={onImport} className="mt-6 inline-flex h-10 items-center gap-2 rounded-lg bg-[#c9a84c] px-4 text-sm font-bold text-[#111412] hover:bg-[#e6c364]"><FileUp className="h-4 w-4" />Importer un fichier CSV</button>}</div>;
+  const { t } = useI18n();
+  return <div className="flex min-h-[360px] flex-col items-center justify-center px-5 py-12 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#c9a84c]/10 text-[#c9a84c]"><ReceiptText className="h-7 w-7" /></span><h2 className="mt-5 text-lg font-bold">{filtered ? t("noMatchingTransactions") : t("noTransactionsRecorded")}</h2><p className="mt-2 max-w-md text-sm text-[#a9a291]">{t("noTransactionsSubtitle")}</p>{!filtered && <button type="button" onClick={onImport} className="mt-6 inline-flex h-10 items-center gap-2 rounded-lg bg-[#c9a84c] px-4 text-sm font-bold text-[#111412] hover:bg-[#e6c364]"><FileUp className="h-4 w-4" />{t("importCsvFile")}</button>}</div>;
 }

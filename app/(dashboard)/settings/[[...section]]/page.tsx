@@ -22,7 +22,9 @@ type SectionId = (typeof sectionIds)[number];
 const defaultPreferences: PreferenceSettings = {
   language: "fr",
   currency: "EUR",
-  madhhab: "aaoifi",
+  nisabType: "gold",
+  fiscalYearStart: "january",
+  bitcoinZakatable: false,
 };
 
 export default async function SettingsPage({
@@ -30,7 +32,7 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: { section?: string[] };
-  searchParams: { unsubscribe?: string };
+  searchParams: { tab?: string; unsubscribe?: string };
 }) {
   const supabase = createClient();
   const {
@@ -40,11 +42,12 @@ export default async function SettingsPage({
 
   // "*" rather than a column list: a column added by a migration that is not
   // applied yet must not make the whole query (and every toggle) fail.
-  const { data: preferences } = await supabase
-    .from("user_preferences")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const [{ data: preferences }, { data: profileRow }, { data: zakatRow }, { data: waitlistRow }] = await Promise.all([
+    supabase.from("user_preferences").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("zakat_profile").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase.from("premium_waitlist").select("id").eq("user_id", user.id).maybeSingle(),
+  ]);
 
   const metadata = user.user_metadata ?? {};
   const zakat = metadata.zakat_profile as ZakatProfile | undefined;
@@ -52,25 +55,34 @@ export default async function SettingsPage({
   const profile: SettingsProfile = {
     userId: user.id,
     email: user.email ?? "",
-    firstName: String(metadata.first_name ?? ""),
-    lastName: String(metadata.last_name ?? ""),
-    phone: String(metadata.phone ?? user.phone ?? ""),
-    avatarUrl: String(metadata.avatar_url ?? ""),
+    firstName: profileRow?.first_name ?? String(metadata.first_name ?? ""),
+    lastName: profileRow?.last_name ?? String(metadata.last_name ?? ""),
+    phone: profileRow?.phone ?? String(metadata.phone ?? user.phone ?? ""),
+    avatarUrl: profileRow?.avatar_url ?? String(metadata.avatar_url ?? ""),
     createdAt: user.created_at,
     dailySummaryEnabled: preferences?.daily_summary_enabled ?? false,
     priceAlertsEnabled: preferences?.price_alerts_enabled ?? false,
     complianceAlertsEnabled: preferences?.compliance_alerts_enabled ?? false,
+    halalChangeAlert: preferences?.halal_change_alert ?? preferences?.compliance_alerts_enabled ?? true,
+    purificationAlert: preferences?.purification_alert ?? true,
+    weeklyComplianceReport: preferences?.weekly_compliance_report ?? true,
     annualZakatReminderEnabled:
       preferences?.annual_zakat_reminder_enabled ?? false,
+    zakatReminder: preferences?.zakat_reminder ?? preferences?.annual_zakat_reminder_enabled ?? true,
     zakatPaymentDate: preferences?.zakat_payment_date ?? null,
     preferences: {
       ...defaultPreferences,
-      ...(metadata.preferences as Partial<PreferenceSettings> | undefined),
+      currency: (preferences?.currency ?? (metadata.preferences as Partial<PreferenceSettings> | undefined)?.currency ?? "EUR") as PreferenceSettings["currency"],
+      language: preferences?.language === "en" ? "en" : "fr",
+      nisabType: (preferences?.nisab_type ?? "gold") as PreferenceSettings["nisabType"],
+      fiscalYearStart: (preferences?.fiscal_year_start ?? "january") as PreferenceSettings["fiscalYearStart"],
+      bitcoinZakatable: preferences?.bitcoin_zakatable ?? false,
     },
-    zakat: zakat?.startDate ? zakat : null,
+    zakat: zakatRow?.start_date ? { startDate: zakatRow.start_date, includeBitcoin: zakatRow.include_bitcoin, includeIncome: zakatRow.include_income } : zakat?.startDate ? zakat : null,
+    waitlisted: Boolean(waitlistRow),
   };
 
-  const requested = params.section?.[0];
+  const requested = searchParams.tab ?? params.section?.[0];
   const initialSection = sectionIds.includes(requested as SectionId)
     ? (requested as SectionId)
     : "profil";
