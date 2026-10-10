@@ -10,9 +10,9 @@ export default async function AssetLayout({
   children: React.ReactNode;
 }) {
   const {
-    data: { session },
-  } = await createClient().auth.getSession();
-  if (!session) redirect("/login");
+    data: { user },
+  } = await createClient().auth.getUser();
+  if (!user) redirect("/login");
 
-  return <DashboardShell email={session.user.email}>{children}</DashboardShell>;
+  return <DashboardShell email={user.email}>{children}</DashboardShell>;
 }

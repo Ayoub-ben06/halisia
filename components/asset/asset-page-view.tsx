@@ -51,6 +51,7 @@ type AssetPageViewProps = {
   sector: string | undefined;
   country: string | undefined;
   businessSummary: string | undefined;
+  isPremium: boolean;
 };
 
 function screeningStatusLabel(status: ScreeningResult["status"], t: (key: TranslationKey) => string) {
@@ -164,7 +165,7 @@ export function AssetPageView(props: AssetPageViewProps) {
                         {props.screening.note && <p className="mt-1 text-[rgba(255,255,255,0.6)]">{props.screening.note}</p>}
                       </div>
                     )}
-                    {purificationText && (
+                    {props.isPremium && purificationText && (
                       <p className="mt-5 text-sm font-semibold text-[#e6c364]">
                         {purificationText}
                         {props.hasFortuneoHolding && props.dividendsReceived && props.purificationRatio != null ? (
@@ -176,8 +177,8 @@ export function AssetPageView(props: AssetPageViewProps) {
                         ) : null}
                       </p>
                     )}
-                    <p className="mt-7 text-sm leading-6 text-[#ffffff]">{props.screening.business.explanation}</p>
-                    <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                    {props.isPremium && <p className="mt-7 text-sm leading-6 text-[#ffffff]">{props.screening.business.explanation}</p>}
+                    {props.isPremium && <div className="mt-7 grid gap-4 sm:grid-cols-2">
                       {props.screening.criteria.map((criterion) => (
                         <Metric
                           key={criterion.key}
@@ -192,11 +193,11 @@ export function AssetPageView(props: AssetPageViewProps) {
                           }
                         />
                       ))}
-                    </div>
-                    <Link href={`/screening?app=1&symbol=${encodeURIComponent(props.screening.ticker)}`} className="mt-6 inline-block text-xs font-bold text-[#e6c364] hover:underline">
+                    </div>}
+                    {props.isPremium && <Link href={`/screening?app=1&symbol=${encodeURIComponent(props.screening.ticker)}`} className="mt-6 inline-block text-xs font-bold text-[#e6c364] hover:underline">
                       {t("assetViewFullScreening")}
-                    </Link>
-                    <p className="mt-5 text-[10px] leading-4 text-[rgba(255,255,255,0.6)]">{t("screeningDisclaimer")}</p>
+                    </Link>}
+                    {props.isPremium ? <p className="mt-5 text-[10px] leading-4 text-[rgba(255,255,255,0.6)]">{t("screeningDisclaimer")}</p> : <div className="mt-5 rounded-xl border border-primary/25 bg-primary/[0.06] p-4 text-sm text-muted-foreground">Le détail AAOIFI, les ratios financiers et la purification sont réservés à Premium. <Link href="/tarifs" className="font-semibold text-primary hover:underline">Voir les tarifs</Link></div>}
                   </>
                 ) : (
                   <>
@@ -207,7 +208,7 @@ export function AssetPageView(props: AssetPageViewProps) {
                 )}
               </section>
             )}
-            {props.isETF && <ETFScreeningBlock screening={props.etfScreening} />}
+            {props.isETF && (props.isPremium ? <ETFScreeningBlock screening={props.etfScreening} /> : <section className="rounded-[2rem] border border-primary/25 bg-[#1a1c1a] p-6 sm:p-8"><h2 className="text-xl font-bold text-primary">Screening ETF détaillé réservé à Premium</h2><p className="mt-3 text-sm text-muted-foreground">Accédez à la composition analysée, aux ratios et à la purification avec Premium.</p><Link href="/tarifs" className="mt-5 inline-block text-sm font-bold text-primary hover:underline">Voir les tarifs</Link></section>)}
             {props.isCrypto && (
               <section className="rounded-[2rem] border border-[#c9a84c]/25 bg-[#1a1c1a] p-6 sm:p-8">
                 <h2 className="flex items-center gap-3 text-2xl font-bold text-[#e6c364]">

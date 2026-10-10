@@ -231,6 +231,14 @@ export function AddToWatchlistModal({
           setError(t("watchlistAlreadyAdded"));
           return;
         }
+        if (insertError.message.includes("FREE_WATCHLIST_LIMIT")) {
+          setError(t("freeWatchlistLimit"));
+          return;
+        }
+        if (insertError.message.includes("PREMIUM_ALERTS_REQUIRED")) {
+          setError(t("premiumAlertsRequired"));
+          return;
+        }
         throw insertError;
       }
 

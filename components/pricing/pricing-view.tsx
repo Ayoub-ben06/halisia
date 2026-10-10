@@ -80,6 +80,9 @@ export function PricingView() {
       t("pricingFreeFeature3"),
       t("pricingFreeFeature4"),
       t("pricingFreeFeature5"),
+      t("pricingFreeFeature6"),
+      t("pricingFreeFeature7"),
+      t("pricingFreeFeature8"),
     ],
     [t],
   );
@@ -92,6 +95,8 @@ export function PricingView() {
       t("pricingPremiumFeature5"),
       t("pricingPremiumFeature6"),
       t("pricingPremiumFeature7"),
+      t("pricingPremiumFeature8"),
+      t("pricingPremiumFeature9"),
     ],
     [t],
   );
@@ -125,7 +130,7 @@ export function PricingView() {
         </div>
       </section>
 
-      <section className="mt-10 grid items-stretch gap-6 lg:grid-cols-2">
+      <section className="mt-10 grid items-stretch gap-6 lg:grid-cols-3">
         <PlanCard
           eyebrow={t("pricingDiscoveryEyebrow")}
           title={t("pricingDiscoveryTitle")}
@@ -137,6 +142,18 @@ export function PricingView() {
           <Link href="/register" className="mt-auto flex h-11 items-center justify-center gap-2 rounded-lg bg-white/[0.06] text-xs font-bold transition-colors hover:bg-white/10">
             {t("pricingStartFree")} <ChevronRight className="h-4 w-4" />
           </Link>
+        </PlanCard>
+
+        <PlanCard
+          premium
+          eyebrow="Sans carte bancaire"
+          title="Essai Premium"
+          description="Testez toutes les fonctionnalités Premium pendant 7 jours, sans prélèvement automatique."
+          price="7 jours"
+          suffix="gratuits"
+          features={["Toutes les fonctionnalités Premium", "Aucune carte bancaire", "Retour automatique au plan Gratuit"]}
+        >
+          <Link href="/register?next=/onboarding/welcome" className="mt-auto flex h-11 items-center justify-center gap-2 rounded-lg bg-primary text-xs font-bold text-primary-foreground">Essayer gratuitement <ChevronRight className="h-4 w-4" /></Link>
         </PlanCard>
 
         <PlanCard
@@ -293,7 +310,7 @@ function CheckoutButton({ plan }: { plan: "monthly" | "yearly" }) {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, returnTo: "/tarifs" }),
       });
       const data = await response.json() as { url?: string; error?: string };
       if (response.status === 401) {

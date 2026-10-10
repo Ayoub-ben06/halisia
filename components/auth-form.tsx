@@ -16,10 +16,10 @@ const googleEnabled = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === "true";
 export function AuthForm({ mode, next: rawNext, initialError }: { mode: "login" | "register"; next?: string; initialError?: string }) {
   const router = useRouter();
   const { t } = useI18n();
-  const next = safeNextPath(rawNext);
+  const isLogin = mode === "login";
+  const next = safeNextPath(rawNext, !isLogin ? "/onboarding/welcome" : "/dashboard");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(initialError === "lien-invalide" ? t("authInvalidLink") : "");
-  const isLogin = mode === "login";
 
   function getErrorMessage(errorMessage: string) {
     const normalized = errorMessage.toLowerCase();
@@ -30,6 +30,14 @@ export function AuthForm({ mode, next: rawNext, initialError }: { mode: "login" 
 
     if (normalized.includes("invalid login credentials")) {
       return t("authInvalidCredentials");
+    }
+
+    if (
+      normalized.includes("email rate limit exceeded") ||
+      normalized.includes("over_email_send_rate_limit") ||
+      normalized.includes("rate limit")
+    ) {
+      return t("authEmailRateLimited");
     }
 
     if (
@@ -63,9 +71,10 @@ export function AuthForm({ mode, next: rawNext, initialError }: { mode: "login" 
     }
 
     const supabase = createClient();
+    const newsletterOptIn = !isLogin && form.get("newsletter") === "on";
     const result = isLogin
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callbackUrl(next) } });
+      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callbackUrl(next), data: { newsletter_opt_in: newsletterOptIn } } });
     if (result.error) {
       setLoading(false);
       return setMessage(getErrorMessage(result.error.message));
@@ -141,6 +150,12 @@ export function AuthForm({ mode, next: rawNext, initialError }: { mode: "login" 
                 </Link>
                 .
               </span>
+            </label>
+          )}
+          {!isLogin && (
+            <label className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+              <input type="checkbox" name="newsletter" className="mt-1 accent-[#c9a84c]" />
+              <span>{t("authNewsletterOptIn")}</span>
             </label>
           )}
           {message && <p className="text-sm text-destructive" role="alert">{message}</p>}

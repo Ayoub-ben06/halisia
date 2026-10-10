@@ -197,6 +197,12 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["user_preferences"]["Insert"]>;
         Relationships: [];
       };
+      newsletter_subscribers: {
+        Row: { user_id: string; email: string; subscribed: boolean; consented_at: string | null; unsubscribed_at: string | null; created_at: string; updated_at: string };
+        Insert: { user_id: string; email: string; subscribed?: boolean; consented_at?: string | null; unsubscribed_at?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["newsletter_subscribers"]["Insert"]>;
+        Relationships: [];
+      };
       user_profiles: {
         Row: { id: string; first_name: string | null; last_name: string | null; phone: string | null; avatar_url: string | null; created_at: string; updated_at: string };
         Insert: { id: string; first_name?: string | null; last_name?: string | null; phone?: string | null; avatar_url?: string | null; created_at?: string; updated_at?: string };
@@ -249,6 +255,32 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
+        Relationships: [];
+      };
+      user_entitlements: {
+        Row: {
+          user_id: string;
+          plan: "free" | "trial" | "premium";
+          trial_started_at: string | null;
+          trial_ends_at: string | null;
+          trial_used_at: string | null;
+          trial_reminder_sent_at: string | null;
+          trial_expired_sent_at: string | null;
+          onboarding_completed_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          plan?: "free" | "trial" | "premium";
+          trial_started_at?: string | null;
+          trial_ends_at?: string | null;
+          trial_used_at?: string | null;
+          trial_reminder_sent_at?: string | null;
+          trial_expired_sent_at?: string | null;
+          onboarding_completed_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_entitlements"]["Insert"]>;
         Relationships: [];
       };
       screening_cache: {

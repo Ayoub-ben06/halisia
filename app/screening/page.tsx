@@ -10,10 +10,10 @@ export default async function ScreeningPage({
 }: {
   searchParams: { app?: string; symbol?: string };
 }) {
-  const { data: { session } } = await createClient().auth.getSession();
+  const { data: { user } } = await createClient().auth.getUser();
   const content = <ScreeningView initialSymbol={searchParams.symbol} />;
-  if (searchParams.app === "1" && session) {
-    return <DashboardShell email={session.user.email}>{content}</DashboardShell>;
+  if (searchParams.app === "1" && user) {
+    return <DashboardShell email={user.email}>{content}</DashboardShell>;
   }
   return <PublicFeatureShell>{content}</PublicFeatureShell>;
 }

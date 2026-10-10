@@ -6,6 +6,7 @@ import {
   type SettingsProfile,
   type ZakatProfile,
 } from "@/components/settings/settings-view";
+import { getEntitlement, type EffectivePlan } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +43,13 @@ export default async function SettingsPage({
 
   // "*" rather than a column list: a column added by a migration that is not
   // applied yet must not make the whole query (and every toggle) fail.
-  const [{ data: preferences }, { data: profileRow }, { data: zakatRow }, { data: waitlistRow }] = await Promise.all([
+  const [{ data: preferences }, { data: profileRow }, { data: zakatRow }, { data: waitlistRow }, { data: newsletterRow }, entitlementResult] = await Promise.all([
     supabase.from("user_preferences").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("user_profiles").select("*").eq("id", user.id).maybeSingle(),
     supabase.from("zakat_profile").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("premium_waitlist").select("id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("newsletter_subscribers").select("subscribed").eq("user_id", user.id).maybeSingle(),
+    getEntitlement(user.id).catch(() => ({ plan: "free" as EffectivePlan, entitlement: null, subscription: null, limits: { portfolioAssets: 5, watchlistAssets: 3 } })),
   ]);
 
   const metadata = user.user_metadata ?? {};
@@ -61,6 +64,7 @@ export default async function SettingsPage({
     avatarUrl: profileRow?.avatar_url ?? String(metadata.avatar_url ?? ""),
     createdAt: user.created_at,
     dailySummaryEnabled: preferences?.daily_summary_enabled ?? false,
+    newsletterSubscribed: newsletterRow?.subscribed ?? false,
     priceAlertsEnabled: preferences?.price_alerts_enabled ?? false,
     complianceAlertsEnabled: preferences?.compliance_alerts_enabled ?? false,
     halalChangeAlert: preferences?.halal_change_alert ?? preferences?.compliance_alerts_enabled ?? true,
@@ -80,6 +84,10 @@ export default async function SettingsPage({
     },
     zakat: zakatRow?.start_date ? { startDate: zakatRow.start_date, includeBitcoin: zakatRow.include_bitcoin, includeIncome: zakatRow.include_income } : zakat?.startDate ? zakat : null,
     waitlisted: Boolean(waitlistRow),
+    plan: entitlementResult.plan,
+    trialEndsAt: entitlementResult.entitlement?.trial_ends_at ?? null,
+    subscriptionEndsAt: entitlementResult.subscription?.current_period_end ?? null,
+    subscriptionStatus: entitlementResult.subscription?.status ?? null,
   };
 
   const requested = searchParams.tab ?? params.section?.[0];

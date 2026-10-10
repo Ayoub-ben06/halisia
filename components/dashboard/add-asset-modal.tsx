@@ -339,9 +339,9 @@ export function AddAssetModal({
     } catch (error) {
       setErrors({
         submit:
-          error instanceof Error
-            ? error.message
-            : t("assetAddFailed"),
+          error instanceof Error && error.message.includes("FREE_PORTFOLIO_LIMIT")
+            ? t("freePortfolioLimit")
+            : error instanceof Error ? error.message : t("assetAddFailed"),
       });
     } finally {
       setSubmitting(false);
@@ -597,6 +597,9 @@ export function AddAssetModal({
     setImportError("");
     setProgress(0);
     try {
+      const entitlementResponse = await fetch("/api/entitlements");
+      const entitlement = await entitlementResponse.json() as { plan?: string };
+      if (entitlement.plan === "free") throw new Error(t("premiumImportRequired"));
       const supabase = createClient();
       const {
         data: { user },
@@ -667,7 +670,9 @@ export function AddAssetModal({
       router.refresh();
     } catch (error) {
       setImportError(
-        error instanceof Error ? error.message : t("importFailed"),
+        error instanceof Error && error.message.includes("FREE_PORTFOLIO_LIMIT")
+          ? t("freePortfolioLimit")
+          : error instanceof Error ? error.message : t("importFailed"),
       );
     } finally {
       setSubmitting(false);

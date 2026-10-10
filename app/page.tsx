@@ -32,9 +32,9 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const {
-    data: { session },
-  } = await createClient().auth.getSession();
-  if (session) redirect("/dashboard");
+    data: { user },
+  } = await createClient().auth.getUser();
+  if (user) redirect("/dashboard");
 
   return (
     <LandingI18nShell>

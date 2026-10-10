@@ -54,6 +54,7 @@ export type SettingsProfile = {
   avatarUrl: string;
   createdAt: string;
   dailySummaryEnabled: boolean;
+  newsletterSubscribed: boolean;
   priceAlertsEnabled: boolean;
   complianceAlertsEnabled: boolean;
   halalChangeAlert: boolean;
@@ -65,6 +66,10 @@ export type SettingsProfile = {
   preferences: PreferenceSettings;
   zakat: ZakatProfile;
   waitlisted: boolean;
+  plan: "free" | "trial" | "premium";
+  trialEndsAt: string | null;
+  subscriptionEndsAt: string | null;
+  subscriptionStatus: string | null;
 };
 
 const sections = [
@@ -162,11 +167,12 @@ export function SettingsView({
               onError={showError}
             />
           )}
-          {section === "abonnement" && <SubscriptionSection userId={profile.userId} email={profile.email} initiallyWaitlisted={profile.waitlisted} onSuccess={showToast} onError={showError} />}
+          {section === "abonnement" && <SubscriptionSection userId={profile.userId} email={profile.email} plan={profile.plan} trialEndsAt={profile.trialEndsAt} subscriptionEndsAt={profile.subscriptionEndsAt} subscriptionStatus={profile.subscriptionStatus} initiallyWaitlisted={profile.waitlisted} onSuccess={showToast} onError={showError} />}
           {section === "notifications" && (
             <NotificationsSection
               userId={profile.userId}
               initialDailySummaryEnabled={profile.dailySummaryEnabled}
+              initialNewsletterSubscribed={profile.newsletterSubscribed}
               initialPriceAlertsEnabled={profile.priceAlertsEnabled}
               initialComplianceAlertsEnabled={profile.complianceAlertsEnabled}
               initialHalalChangeAlert={profile.halalChangeAlert}
@@ -559,7 +565,7 @@ function DeleteAccountDialog({
 
 /* --------------------------------------------------------- Abonnement -- */
 
-function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, onError }: { userId: string; email: string; initiallyWaitlisted: boolean; onSuccess: (message: string) => void; onError: (message: string) => void }) {
+function SubscriptionSection({ userId, email, plan, trialEndsAt, subscriptionEndsAt, subscriptionStatus, initiallyWaitlisted, onSuccess, onError }: { userId: string; email: string; plan: "free" | "trial" | "premium"; trialEndsAt: string | null; subscriptionEndsAt: string | null; subscriptionStatus: string | null; initiallyWaitlisted: boolean; onSuccess: (message: string) => void; onError: (message: string) => void }) {
   const { t } = useI18n();
   const planFeatures = [
     t("settingsPlanFeature1"),
@@ -569,6 +575,7 @@ function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, on
   ];
   const [waitlisted, setWaitlisted] = useState(initiallyWaitlisted);
   const [saving, setSaving] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   async function joinWaitlist() {
     setSaving(true);
     try {
@@ -578,6 +585,15 @@ function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, on
       onSuccess(t("settingsWaitlistSuccess"));
     } catch { onError(t("settingsWaitlistFailed")); } finally { setSaving(false); }
   }
+  async function openPortal() {
+    setPortalLoading(true);
+    const response = await fetch("/api/stripe/portal", { method: "POST" });
+    const data = await response.json() as { url?: string; error?: string };
+    if (response.ok && data.url) window.location.assign(data.url);
+    else { onError(data.error ?? "Impossible d’ouvrir la gestion de l’abonnement."); setPortalLoading(false); }
+  }
+  const endDate = trialEndsAt ?? subscriptionEndsAt;
+  const remainingDays = trialEndsAt ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000)) : null;
   return (
     <Panel>
       <PanelHeader
@@ -592,14 +608,14 @@ function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, on
               {t("activePlan")}
             </span>
             <p className="mt-3 text-2xl font-bold text-[#e6c364]">
-              {t("launchAccess")}
+              {plan === "trial" ? `Essai Premium — ${remainingDays} jour${remainingDays === 1 ? "" : "s"} restant${remainingDays === 1 ? "" : "s"}` : plan === "premium" ? "Premium" : t("launchAccess")}
             </p>
             <p className="mt-1 text-sm text-[#a9a291]">
               {t("settingsAllFeaturesIncluded")}
             </p>
           </div>
           <p className="text-right">
-            <span className="text-3xl font-bold">0 €</span>
+            <span className="text-3xl font-bold">{plan === "premium" ? "Payant" : plan === "trial" ? "7 jours" : "0 €"}</span>
           </p>
         </div>
         <ul className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -615,14 +631,15 @@ function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, on
         </ul>
       </div>
       <p className="mt-6 text-sm leading-6 text-[#a9a291]">
-        {t("settingsPremiumOpeningSoon")}{" "}
-        <Link href="/tarifs" className="font-semibold text-[#e6c364] hover:underline">{t("settingsViewPlannedPricing")}</Link>
+        {plan === "trial" ? "Votre essai se termine automatiquement. Vos données seront conservées et le plan Gratuit sera appliqué." : plan === "premium" ? `Statut de facturation : ${subscriptionStatus ?? "actif"}${endDate ? ` · prochaine échéance : ${new Date(endDate).toLocaleDateString("fr-FR")}` : ""}.` : "Passez Premium pour débloquer toutes les fonctionnalités."}{" "}
+        {plan !== "premium" && <Link href="/tarifs" className="font-semibold text-[#e6c364] hover:underline">Voir les tarifs</Link>}
       </p>
-      <div className="mt-7 rounded-xl border border-[#c9a84c]/30 bg-[#151b18] p-5">
-        <p className="font-semibold">{t("settingsOfficialPremiumSoon")}</p>
-        <p className="mt-1 text-sm text-[#a9a291]">9,99 €/mois ou 79 €/an</p>
-        {waitlisted ? <p className="mt-4 text-sm font-semibold text-halal-compliant">✅ {t("settingsOnPriorityList")}</p> : <Button type="button" disabled={saving} onClick={() => void joinWaitlist()} className="mt-4 font-bold">{saving ? t("settingsJoiningWaitlist") : t("settingsJoinPriorityList")}</Button>}
-      </div>
+      {plan === "premium" && <Button type="button" disabled={portalLoading} onClick={() => void openPortal()} className="mt-5">{portalLoading ? "Ouverture…" : "Gérer mon abonnement"}</Button>}
+      {plan !== "premium" && <div className="mt-7 rounded-xl border border-[#c9a84c]/30 bg-[#151b18] p-5">
+        <p className="font-semibold">{plan === "trial" ? "Après votre essai" : "Débloquer Premium"}</p>
+        <p className="mt-1 text-sm text-[#a9a291]">6,99 €/mois ou choisissez l’offre annuelle sur la page tarifs.</p>
+        <Link href="/tarifs" className="mt-4 inline-flex h-10 items-center rounded-lg bg-[#c9a84c] px-4 text-sm font-bold text-[#151816]">Voir les tarifs</Link>
+      </div>}
     </Panel>
   );
 }
@@ -632,6 +649,7 @@ function SubscriptionSection({ userId, email, initiallyWaitlisted, onSuccess, on
 function NotificationsSection({
   userId,
   initialDailySummaryEnabled,
+  initialNewsletterSubscribed,
   initialPriceAlertsEnabled,
   initialComplianceAlertsEnabled,
   initialHalalChangeAlert,
@@ -645,6 +663,7 @@ function NotificationsSection({
 }: {
   userId: string;
   initialDailySummaryEnabled: boolean;
+  initialNewsletterSubscribed: boolean;
   initialPriceAlertsEnabled: boolean;
   initialComplianceAlertsEnabled: boolean;
   initialHalalChangeAlert: boolean;
@@ -663,6 +682,7 @@ function NotificationsSection({
     { label: t("settingsNewsletter"), description: t("settingsNewsletterDesc") },
   ];
   const [dailyEnabled, setDailyEnabled] = useState(initialDailySummaryEnabled);
+  const [newsletterEnabled, setNewsletterEnabled] = useState(initialNewsletterSubscribed);
   const [priceEnabled, setPriceEnabled] = useState(initialPriceAlertsEnabled);
   const [complianceEnabled, setComplianceEnabled] = useState(initialComplianceAlertsEnabled);
   const [halalEnabled, setHalalEnabled] = useState(initialHalalChangeAlert);
@@ -688,6 +708,31 @@ function NotificationsSection({
       onSuccess(next ? t("settingsDailySummaryEnabled") : t("settingsDailySummaryDisabled"));
     } catch {
       setDailyEnabled(previous);
+      onError(t("settingsSaveSettingFailed"));
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function toggleNewsletter(next: boolean) {
+    const previous = newsletterEnabled;
+    setNewsletterEnabled(next);
+    setSaving("newsletter");
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error("Missing authenticated email");
+      const { error } = await supabase.from("newsletter_subscribers").upsert({
+        user_id: userId,
+        email: user.email,
+        subscribed: next,
+        consented_at: next ? new Date().toISOString() : undefined,
+        unsubscribed_at: next ? null : new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      if (error) throw error;
+      onSuccess(next ? t("settingsNewsletterEnabled") : t("settingsNewsletterDisabled"));
+    } catch {
+      setNewsletterEnabled(previous);
       onError(t("settingsSaveSettingFailed"));
     } finally {
       setSaving(null);
@@ -809,7 +854,15 @@ function NotificationsSection({
           href={!hasZakatProfile ? "/zakat" : undefined}
         />
 
-        {upcomingNotifications.map((item) => (
+        <NotificationToggleCard
+          label={t("settingsNewsletter")}
+          description={t("settingsNewsletterDesc")}
+          checked={newsletterEnabled}
+          disabled={saving === "newsletter"}
+          onChange={(checked) => void toggleNewsletter(checked)}
+        />
+
+        {upcomingNotifications.filter((item) => item.label !== t("settingsNewsletter")).map((item) => (
           <div
             key={item.label}
             className="flex items-start justify-between gap-5 rounded-xl border border-white/[0.05] bg-[#151b18] p-5 opacity-60"

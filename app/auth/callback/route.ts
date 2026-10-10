@@ -9,7 +9,11 @@ export const dynamic = "force-dynamic";
 /** Target of email links (signup confirmation, password reset) and OAuth sign-in. */
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const next = safeNextPath(request.nextUrl.searchParams.get("next"));
+  const authType = request.nextUrl.searchParams.get("type");
+  const next = safeNextPath(
+    request.nextUrl.searchParams.get("next"),
+    authType === "signup" ? "/onboarding/welcome" : "/dashboard",
+  );
   if (code) {
     const supabase = createRouteHandlerClient<Database>({ cookies });
     const { error } = await supabase.auth.exchangeCodeForSession(code);

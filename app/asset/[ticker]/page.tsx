@@ -11,6 +11,7 @@ import { calculatePurification } from "@/lib/aaoifi/purification";
 import { findETF, isETFScreeningStale, screenETF } from "@/lib/etf/etf-screener";
 import { saveETFScreening } from "@/lib/etf/etf-persistence";
 import { fetchYahooHistory } from "@/lib/yahoo-history";
+import { getEntitlement } from "@/lib/entitlements";
 
 const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
@@ -21,6 +22,7 @@ export default async function AssetPage({ params }: { params: { ticker: string }
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  const access = await getEntitlement(user.id);
 
   let quote;
   let marketTicker = ticker;
@@ -169,6 +171,7 @@ export default async function AssetPage({ params }: { params: { ticker: string }
       sector={profile?.industryDisp ?? profile?.sectorDisp ?? profile?.sector ?? undefined}
       country={profile?.country ?? undefined}
       businessSummary={profile?.longBusinessSummary}
+      isPremium={access.plan !== "free"}
     />
   );
 }

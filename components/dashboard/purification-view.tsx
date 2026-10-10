@@ -22,6 +22,7 @@ export function PurificationView({
   unavailableCount,
   currency,
   displayRate,
+  isPremium,
 }: {
   rows: PurificationRow[];
   totalDividends: number;
@@ -29,6 +30,7 @@ export function PurificationView({
   unavailableCount: number;
   currency: string;
   displayRate: number;
+  isPremium: boolean;
 }) {
   const { t, language } = useI18n();
   const converted = (value: number) => value * displayRate;
@@ -42,7 +44,13 @@ export function PurificationView({
         </p>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      {!isPremium && <section className="rounded-2xl border border-primary/30 bg-primary/[0.08] p-6">
+        <h2 className="text-lg font-bold text-primary">Purification détaillée réservée à Premium</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Retrouvez le détail par actif, les dividendes estimés et les montants à purifier avec l’offre Premium.</p>
+        <a href="/tarifs" className="mt-5 inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground">Voir les tarifs</a>
+      </section>}
+
+      {isPremium && <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-primary/25 bg-primary/10 p-6">
           <div className="flex items-center gap-2 text-sm text-primary"><Droplets className="h-4 w-4" /> {t("purificationTotal")}</div>
           <p className="mt-3 text-3xl font-bold">{money(converted(totalAmount), currency, language)}</p>
@@ -58,9 +66,9 @@ export function PurificationView({
           <p className="mt-3 text-3xl font-bold">{unavailableCount}</p>
           <p className="mt-2 text-xs text-muted-foreground">{t("dividendHistoryUnavailable")}</p>
         </div>
-      </section>
+      </section>}
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      {isPremium && <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="border-b border-border px-6 py-5">
           <h2 className="font-semibold">{t("detailByAsset")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("stocksAndDividendsOnly")}</p>
@@ -90,12 +98,12 @@ export function PurificationView({
             </table>
           </div>
         )}
-      </section>
+      </section>}
 
-      <div className="flex gap-3 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+      {isPremium && <div className="flex gap-3 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
         {unavailableCount > 0 ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" /> : <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
         <p>{t("purificationDisclaimer")}</p>
-      </div>
+      </div>}
     </main>
   );
 }

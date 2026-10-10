@@ -330,6 +330,9 @@ export default function ImportConfirmPage() {
     setImportProgress(0);
     setError("");
     try {
+      const entitlementResponse = await fetch("/api/entitlements");
+      const entitlement = await entitlementResponse.json() as { plan?: string };
+      if (entitlement.plan === "free") throw new Error(t("premiumImportRequired"));
       const supabase = createClient();
       const {
         data: { user },

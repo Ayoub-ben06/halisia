@@ -12,6 +12,7 @@ const handledEvents = new Set([
   "customer.subscription.updated",
   "customer.subscription.deleted",
   "invoice.payment_succeeded",
+  "invoice.paid",
   "invoice.payment_failed",
 ]);
 
@@ -100,6 +101,7 @@ export async function POST(request: Request) {
         if (error) throw error;
         break;
       }
+      case "invoice.paid":
       case "invoice.payment_succeeded":
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;

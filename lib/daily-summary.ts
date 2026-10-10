@@ -234,6 +234,16 @@ export async function listDailySummaryRecipients(): Promise<string[]> {
   if (error) {
     throw new Error(`Lecture des préférences impossible : ${error.message}`);
   }
-
-  return (data ?? []).map((row) => row.user_id);
+  const ids = (data ?? []).map((row) => row.user_id);
+  if (!ids.length) return [];
+  const [{ data: entitlements }, { data: subscriptions }] = await Promise.all([
+    admin.from("user_entitlements").select("user_id,plan,trial_ends_at").in("user_id", ids),
+    admin.from("subscriptions").select("user_id,status,current_period_end").in("user_id", ids).in("status", ["active", "trialing", "past_due"]),
+  ]);
+  const now = Date.now();
+  const premiumIds = new Set((subscriptions ?? []).filter((row) => !row.current_period_end || new Date(row.current_period_end).getTime() > now).map((row) => row.user_id));
+  for (const row of entitlements ?? []) {
+    if (row.plan === "trial" && row.trial_ends_at && new Date(row.trial_ends_at).getTime() > now) premiumIds.add(row.user_id);
+  }
+  return ids.filter((id) => premiumIds.has(id));
 }
